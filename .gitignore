@@ -1,0 +1,23 @@
+﻿# 密钥与本地配置（绝不能提交）
+.secrets/
+*.env
+!*.env.example
+llm.env
+
+# 依赖与缓存
+node_modules/
+__pycache__/
+*.pyc
+.pnpm-store/
+
+# 临时与备份
+_*.html
+_*.png
+*.bak
+*.tmp
+*.log
+
+# 系统
+.DS_Store
+Thumbs.db
+desktop.ini

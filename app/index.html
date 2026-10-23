@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>行止之间</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="enhancements.css" />
+  <link rel="stylesheet" href="subtasks.css" />
+  <link rel="stylesheet" href="typography.css" />
+  <link rel="stylesheet" href="schedule-status.css" />
+  <link rel="stylesheet" href="archive.css" />
+  <link rel="stylesheet" href="flows.css" />
+  <link rel="stylesheet" href="daily-tools.css" />
+  <link rel="stylesheet" href="project-board.css?v=20261015-taskboard1" />
+  <link rel="stylesheet" href="route/route.css" />
+</head>
+<body>
+  <main class="app-shell">
+    <aside class="sidebar">
+      <div class="brand"><span>潇</span><div><strong>行止之间</strong><small>工作与日常生活规划</small></div></div>
+      <button class="primary" id="new-task">＋ 新建任务</button>
+      <nav>
+        <button class="nav" data-view="projects">项目看板</button>
+        <button class="nav active" data-view="today">今日专注</button>
+        <button class="nav" data-view="route">今日路线</button>
+        <button class="nav research-nav" data-view="board" data-flow="research">科研工作流</button>
+        <button class="nav life-nav" data-view="board" data-flow="life">日常生活流</button>
+        <button class="nav" data-view="weekly">本周复盘</button>
+      </nav>
+      <div class="data-tools"><button class="tool-button" id="export-data">导出备份</button><button class="tool-button" id="import-data">导入备份</button><input id="import-file" type="file" accept="application/json" hidden /></div>
+    </aside>
+    <section class="content">
+      <header><div><span class="eyebrow date-label" id="date-label"></span><span class="week-badge" id="week-badge" title="按学期起始日自动推算"></span><h1 id="view-title">今日专注</h1><p class="platform-tag">行止之间 · 工作与日常生活规划</p></div><button class="ghost" id="reset-demo">恢复示例数据</button></header>
+      <section id="projects-view" class="view" hidden>
+        <div class="projects-overview"><strong id="projects-total">0</strong><div><h2>当前项目总览</h2><p>项目名称从已保存的任务中自动汇总。拖动卡片调整各流线内的顺序，也可使用上下箭头；展开项目后点击任务可重新编辑，把任务卡片拖到其他项目上即可更改任务归属。</p></div></div>
+        <div class="project-groups">
+          <section class="project-group research" aria-labelledby="projects-research-title"><div class="project-group-header"><h2 id="projects-research-title">科研工作流</h2><span><b id="projects-research-count">0</b> 个项目</span></div><ul class="project-list" id="projects-research"></ul></section>
+          <section class="project-group life" aria-labelledby="projects-life-title"><div class="project-group-header"><h2 id="projects-life-title">日常生活流</h2><span><b id="projects-life-count">0</b> 个项目</span></div><ul class="project-list" id="projects-life"></ul></section>
+        </div>
+        <p class="project-sort-status" id="project-sort-status" role="status" aria-live="polite"></p>
+      </section>
+      <section id="today-view" class="view">
+        <div class="live-clock" aria-label="当前时间"><span>当前时间</span><strong id="live-clock">00:00:00</strong></div>
+        <div class="focus-card"><span class="eyebrow">TODAY'S RULE</span><h2>只完成两个深度任务</h2><p>上午和晚上各选择一个最重要任务；下午用于整理、开发执行和运动。</p></div>
+        <div class="schedule" id="schedule"></div>
+      </section>
+      <section id="board-view" class="view" hidden><div class="flow-banner" id="flow-banner"></div><p class="board-hint">从 Inbox 拖动任务卡到目标列；大任务可拆为子任务，并按完成情况自动计算进度。</p><div class="board" id="board"></div></section>
+      <section id="route-view" class="view" hidden>
+        <div class="route-head"><span class="eyebrow">DAILY ROUTE</span><h2 id="route-day-label">今日路线</h2>
+          <p class="route-sub">以「现在」为起点动态重排：课表、集合、内务、吃饭、洗澡、看板任务一起算，走出门就能照着走。任务来自看板，地点可在这里指定。</p></div>
+        <div class="route-layout">
+          <div class="route-map-wrap">
+            <canvas id="route-map"></canvas>
+            <div class="route-hud">
+              <button id="route-fit" class="ghost small" type="button">适配</button>
+              <button id="route-sat" class="ghost small" type="button">卫星</button>
+              <button id="route-center" class="ghost small" type="button">定位到现在</button>
+            </div>
+            <div class="route-badge" id="route-badge">—</div>
+          </div>
+          <aside class="route-panel">
+            <div class="route-controls">
+              <select id="route-day" title="星期"></select>
+              <input id="route-week" type="number" min="1" max="20" value="7" title="第几周" />
+              <select id="route-dorm" title="我的宿舍：洗漱/熄灯/取东西的默认出发点与归宿"></select>
+              <button id="route-plan" class="primary small" type="button" title="以此刻为起点，把课表、集合、吃饭、洗澡、任务重算一遍（不会改课表，也不会动你的任务）">重排</button>
+            </div>
+            <div class="route-row"><span>我现在在</span><select id="route-loc"></select></div>
+            <label class="route-check"><input type="checkbox" id="route-include-delayed" checked /> 把前些天没做完的任务也排进来</label>
+            <div class="route-row"><span>自习点</span><select id="route-study">
+              <option value="U26">未来警务学院</option>
+              <option value="B1">图书馆</option>
+              <option value="D12">宿舍（学生公寓12）</option>
+              <option value="B2">铸剑楼</option>
+            </select></div>
+            <div class="route-row"><span>周三下午</span><select id="route-team"><option value="observe">文广见习（可碎片背诵）</option><option value="run">跟队跑操</option></select></div>
+            <div class="route-row"><button id="route-range" class="ghost small" type="button" style="flex:1">未来 7 天</button><button id="route-today" class="ghost small" type="button" style="flex:1">回到今天</button></div>
+            <div id="route-stats" class="route-stats"></div>
+            <div id="route-warn" class="route-warn"></div>
+            <div id="route-advice" class="route-advice"></div>
+            <div id="route-timeline" class="route-timeline"></div>
+            <div class="route-addline">
+              <input id="route-text" placeholder="一句话加事项：今晚八点去综训馆训练 1 小时" />
+              <button id="route-parse" class="primary small" type="button">解析</button>
+            </div>
+            <div id="route-parse-hint" class="route-parse-hint"></div>
+            <details id="route-api-box" class="route-api">
+              <summary>API 设置（可选）</summary>
+              <div class="route-api-form">
+                <label>Base URL<input id="route-api-base" placeholder="http://127.0.0.1:4181/api/llm" /></label>
+                <label>模型<input id="route-api-model" placeholder="deepseek-chat" /></label>
+                <label>Key（走本地代理可留空）<input id="route-api-key" type="password" /></label>
+                <div class="route-api-actions"><button id="route-api-save" class="primary small" type="button">保存</button><span id="route-api-state"></span></div>
+              </div>
+            </details>
+            <h3 class="route-h3">今日任务（来自看板）</h3>
+            <div id="route-tasks" class="route-tasks"></div>
+          </aside>
+        </div>
+      </section>
+      <section id="weekly-view" class="view" hidden>
+        <div class="weekly-grid"><article><span>已完成任务</span><strong id="done-count">0</strong></article><article><span>本周深度任务</span><strong id="deep-count">0</strong></article><article><span>运动次数</span><strong id="exercise-count">0</strong></article></div>
+        <section class="report"><span class="eyebrow">WEEKLY REPORT</span><h2>组会复盘草稿</h2><textarea id="weekly-notes" placeholder="记录本周完成、可展示成果、阻塞问题与下周计划…"></textarea><div class="report-actions"><button class="primary small" id="save-weekly-notes" type="button">保存复盘</button><button class="primary small" id="copy-report" type="button">复制周报草稿</button><small id="weekly-save-status">未保存</small></div></section>
+        <section class="report journal-panel"><span class="eyebrow">DAILY JOURNAL</span><h2>每日规划日记</h2><div class="journal-toolbar"><label>日期<input id="journal-date" type="date" /></label><button class="ghost small" id="new-journal-entry" type="button">写今天</button></div><textarea id="daily-journal" placeholder="随手记录：今天对未来规划的新想法、明天要优先推进什么、最近哪里卡住了、需要向谁请教……"></textarea><div class="report-actions"><button class="primary small" id="save-journal" type="button">保存今日日记</button><button class="ghost small" id="copy-journal" type="button">复制日记</button><small id="journal-save-status">未保存</small></div><div class="journal-history"><h3>最近记录</h3><div id="journal-list"></div></div></section>
+        <section class="archive"><span class="eyebrow">ARCHIVE</span><h2>本周已完成归档</h2><div id="archive-list"></div></section>
+      </section>
+    </section>
+  </main>
+
+  <dialog id="task-dialog"><form method="dialog" id="task-form"><header><h2 id="task-dialog-title">新建任务</h2><button class="ghost close-dialog" type="button" formnovalidate onclick="this.closest(&quot;dialog&quot;).close(); return false;">×</button></header><label>任务名称<input id="task-title" required placeholder="例如：完成 PubMed 文献趋势图" /></label><label>所属流线<select id="task-flow"><option value="research">科研工作流</option><option value="life">日常生活兴趣爱好流</option></select></label><label>项目<input id="task-project" type="text" placeholder="请输入项目名称" autocomplete="off" /></label><label>计划日期<input id="task-date" type="date" required /></label><label class="large-toggle"><input id="task-unscheduled" type="checkbox" /> 暂不安排具体日期（本周内再决定）</label><label>时段<select id="task-slot"><option value="morning">上午 · 深度思考</option><option value="noon">中午 · 低认知输入</option><option value="afternoon">下午 · 整理/运动</option><option value="night">晚上 · 深度专注</option></select></label><label>状态<select id="task-status"><option value="inbox">Inbox</option><option value="week">本周计划</option><option value="doing">进行中</option><option value="verify">待验证</option><option value="report">待汇报</option></select></label><label class="large-toggle"><input id="task-large" type="checkbox" /> 这是一个需要拆分的大任务</label><label>子任务（每行一项，可稍后补充）<textarea id="task-subtasks" placeholder="检索真实来源&#10;完成去重与筛选&#10;整理成可展示结果"></textarea></label><label>完成标准<textarea id="task-output" placeholder="例如：网页展示至少 10 篇真实文献及 PMID"></textarea></label><menu><button class="close-dialog" type="button" formnovalidate onclick="this.closest(&quot;dialog&quot;).close(); return false;">取消</button><button class="primary small" id="task-save-button" value="default">保存任务</button></menu></form></dialog>
+
+  <dialog id="ai-dialog"><form method="dialog" id="ai-form"><header><h2>智能拆分建议</h2><button class="ghost close-dialog" type="button" formnovalidate onclick="this.closest(&quot;dialog&quot;).close(); return false;">×</button></header><p class="ai-note">当前是本地可编辑建议：先检查范围、依赖和可验证产出。接入后端模型后，这里可替换为基于你的项目上下文的 LLM 规划与合理性评审。</p><label>建议的子任务（每行一项）<textarea id="ai-subtasks"></textarea></label><p id="ai-review" class="ai-review"></p><menu><button class="close-dialog" type="button" formnovalidate onclick="this.closest(&quot;dialog&quot;).close(); return false;">取消</button><button class="primary small" id="apply-ai-plan" value="default">应用到该任务</button></menu></form></dialog>
+
+  
+  <script src="route/data.js"></script>
+  <script src="route/core.js"></script>
+  <script src="route/schedule.js"></script>
+  <script src="route/planner.js"></script>
+  <script src="route/runtime.js"></script>
+  <script src="route/llm.js"></script>
+  <script src="route/view.js"></script>
+  <script src="app.js"></script>
+  <script src="clock.js"></script>
+  <script src="project-board.js?v=20261015-taskboard1"></script>
+  <script src="emergency.js?v=20261015-edit1"></script>
+  <script src="data-tools.js"></script>
+  <script src="clear-demo-once.js"></script>
+  <script src="daily-journal.js"></script>
+  <script src="sync.js"></script>
+<script>
+(function () {
+  var el = document.getElementById("week-badge");
+  if (!el) return;
+  var start = (window.SCHEDULE && window.SCHEDULE.semesterStart) || "2025-09-08";
+  var t0 = new Date(start + "T00:00:00");
+  var now = new Date(); now.setHours(0, 0, 0, 0);
+  var raw = Math.floor((now - t0) / 604800000) + 1;
+  var w = Math.min(25, Math.max(1, raw));
+  window.__WEEK = w;
+  window.__WEEK_RAW = raw;
+  el.textContent = "第 " + w + " 周" + (raw !== w ? "（日期超范围，请改 semesterStart）" : "");
+  el.style.display = "inline-block";
+  /* 只把合法值填进计划，且用户手动改过就不再覆盖 */
+  try {
+    var wk = document.getElementById("route-week");
+    if (wk && raw === w && !localStorage.getItem("xingzhi-route-week-manual")) wk.value = w;
+  } catch (e) {}
+})();
+</script>
+</body>
+</html>
+
