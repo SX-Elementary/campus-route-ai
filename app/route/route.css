@@ -73,3 +73,27 @@
 
 /* 面板里的小行内标签（宿舍 / 第几周） */
 .route-inline-label{font-size:11px;color:var(--muted);margin:0 2px 0 2px;white-space:nowrap}
+
+/* ---------- 撤销提示条 ---------- */
+.undo-toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,20px);opacity:0;pointer-events:none;
+  display:flex;align-items:center;gap:10px;max-width:min(560px,92vw);
+  padding:10px 14px;border-radius:12px;background:#0f172a;color:#e2e8f0;font-size:13px;
+  box-shadow:0 10px 30px rgba(15,23,42,.28);transition:opacity .18s,transform .18s;z-index:9999}
+.undo-toast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+.undo-toast button{border:0;background:#16a34a;color:#fff;font-size:12px;font-weight:600;
+  padding:5px 10px;border-radius:8px;cursor:pointer}
+.undo-toast button:hover{background:#15803d}
+
+/* 任务卡片上的删除按钮 */
+.task-actions .del{color:#b91c1c;border-color:#fca5a5}
+.task-actions .del:hover{background:#fef2f2}
+
+/* ---------- 解析预览（确认后再添加） ---------- */
+.route-preview{margin-top:6px;border:1px solid #d7e3e0;border-radius:10px;background:#f7fbfa;padding:8px 10px}
+.route-preview .rp-item{display:flex;align-items:baseline;gap:8px;padding:4px 0;cursor:pointer;font-size:12.5px}
+.route-preview .rp-item input{width:auto;margin:0}
+.route-preview .rp-name{font-weight:600;color:#0f172a}
+.route-preview .rp-meta{color:var(--muted);font-size:11.5px}
+.route-preview .rp-merged{margin-top:4px;font-size:11.5px;color:#0f766e}
+.route-preview .rp-actions{display:flex;gap:8px;margin-top:8px}
+.route-preview .rp-actions button{flex:1}

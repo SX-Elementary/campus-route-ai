@@ -26,7 +26,78 @@ tasks.forEach(normalize);
 function rollForwardDelayedTasks() { const today = dayKey(); let changed = false; tasks.forEach(task => { if (task.status !== "done" && task.dueDate < today) { task.delayCount += Math.max(1, dayDistance(task.dueDate, today)); task.dueDate = today; changed = true; } }); if (changed) localStorage.setItem(KEY, JSON.stringify(tasks)); }
 rollForwardDelayedTasks();
 function progress(task) { const list = task.subtasks || []; return list.length ? Math.round(list.filter((item) => item.done).length / list.length * 100) : null; }
-function save() { localStorage.setItem(KEY, JSON.stringify(tasks)); render(); window.dispatchEvent(new CustomEvent("workbench-tasks-updated", { detail: tasks })); }
+/* ---------- 撤销：每次 save() 前把"上一版"压栈，可回退 30 步 ---------- */
+let undoStack = [];
+let lastSaved = JSON.stringify(tasks);
+const UNDO_MAX = 30;
+try {                                   // 刷新页面后仍可回退（栈存在本地）
+  const stored = JSON.parse(localStorage.getItem("xingzhi-undo-stack") || "[]");
+  if (Array.isArray(stored)) undoStack = stored.slice(-UNDO_MAX);
+} catch (e) {}
+
+function notifyTasks() { window.dispatchEvent(new CustomEvent("workbench-tasks-updated", { detail: tasks })); }
+
+function save() {
+  const now = JSON.stringify(tasks);
+  if (lastSaved !== now) {
+    undoStack.push(lastSaved);
+    if (undoStack.length > UNDO_MAX) undoStack.shift();
+    localStorage.setItem("xingzhi-undo-stack", JSON.stringify(undoStack.slice(-UNDO_MAX)));
+  }
+  localStorage.setItem(KEY, now);
+  lastSaved = now;
+  render();
+  notifyTasks();
+  refreshUndoUI();
+}
+(window.__undoStack = undoStack);
+
+function undo(reason) {
+  if (!undoStack.length) { toast("没有可撤销的操作"); return false; }
+  const prev = undoStack.pop();
+  tasks = JSON.parse(prev);
+  lastSaved = JSON.stringify(tasks);
+  localStorage.setItem(KEY, lastSaved);
+  try { localStorage.setItem("xingzhi-undo-stack", JSON.stringify(undoStack)); } catch (e) {}
+  render();
+  notifyTasks();
+  refreshUndoUI();
+  toast((reason || "已撤销") + " · 还剩 " + undoStack.length + " 步可退");
+  return true;
+}
+
+function toast(msg, withUndo) {
+  let bar = document.getElementById("undo-toast");
+  if (!bar) {
+    bar = document.createElement("div");
+    bar.id = "undo-toast";
+    bar.className = "undo-toast";
+    document.body.appendChild(bar);
+  }
+  bar.innerHTML = "<span></span>";
+  bar.firstChild.textContent = msg;
+  if (withUndo) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = "撤销";
+    btn.onclick = () => { undo("已撤销刚添加的操作"); hideToast(); };
+    bar.appendChild(btn);
+  }
+  bar.classList.add("show");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(hideToast, withUndo ? 9000 : 3200);
+}
+function hideToast() { const bar = document.getElementById("undo-toast"); if (bar) bar.classList.remove("show"); }
+
+function refreshUndoUI() {
+  const btn = document.getElementById("undo-btn");
+  if (btn) {
+    btn.disabled = undoStack.length === 0;
+    btn.textContent = undoStack.length ? "撤销 (" + undoStack.length + ")" : "撤销";
+    btn.title = undoStack.length ? "回退上一步改动（Ctrl+Z）" : "暂无可撤销的操作";
+  }
+}
+window.WorkbenchUndo = { undo: undo, count: () => undoStack.length, toast: toast };
 window.addEventListener("workbench-delete-project", (event) => {
   const { name, flow } = event.detail || {};
   if (!name || !["research", "life"].includes(flow)) return;
@@ -48,7 +119,7 @@ window.addEventListener("workbench-move-task-project", (event) => {
   save();
 });
 function progressHTML(task) { const value = progress(task); if (value === null) return ""; const items = task.subtasks.map((item, index) => `<li class="${item.done ? "subtask-done" : ""}"><button type="button" data-action="toggle-subtask" data-index="${index}" aria-label="切换子任务完成状态">${item.done ? "✓" : "○"}</button><span>${item.text}</span><button class="edit-subtask" type="button" data-action="edit-subtask" data-index="${index}" aria-label="修改子任务">编辑</button></li>`).join(""); return `<div class="progress-label"><span>子任务进度</span><b>${value}%</b></div><div class="progress-track"><i style="width:${value}%"></i></div><div class="subtask-count">${task.subtasks.filter(x => x.done).length}/${task.subtasks.length} 已完成</div><ul class="subtask-list">${items}</ul>`; }
-function taskHTML(task) { const value = progress(task); const delay = task.delayCount ? `<b class="delay-badge">延期 ${task.delayCount} 次</b>` : ""; const focus = task.focusDate === dayKey() ? '<b class="focus-badge">今日重点</b>' : ""; const meta = `<small class="auto-meta">${task.estimate} 分钟 · ${task.energy}</small>`; return `<article class="task flow-${task.flow} ${task.status === "done" ? "done" : ""}" data-id="${task.id}" draggable="true"><div class="task-top"><strong>${task.title}</strong>${task.isLarge ? '<em>大任务</em>' : ''}</div><span>${task.project} · ${task.output || "未设置完成标准"}</span>${meta}${focus}${delay}${progressHTML(task)}<div class="task-actions">${value !== null ? '<button data-action="subtask" type="button">子任务</button><button data-action="ai" type="button">智能拆分</button>' : '<button data-action="subtask" type="button">＋ 子任务</button>'}<button class="check" data-action="toggle" type="button">${task.status === "done" ? "↺ 恢复" : "✓ 完成"}</button></div></article>`; }
+function taskHTML(task) { const value = progress(task); const delay = task.delayCount ? `<b class="delay-badge">延期 ${task.delayCount} 次</b>` : ""; const focus = task.focusDate === dayKey() ? '<b class="focus-badge">今日重点</b>' : ""; const meta = `<small class="auto-meta">${task.estimate} 分钟 · ${task.energy}</small>`; return `<article class="task flow-${task.flow} ${task.status === "done" ? "done" : ""}" data-id="${task.id}" draggable="true"><div class="task-top"><strong>${task.title}</strong>${task.isLarge ? '<em>大任务</em>' : ''}</div><span>${task.project} · ${task.output || "未设置完成标准"}</span>${meta}${focus}${delay}${progressHTML(task)}<div class="task-actions">${value !== null ? '<button data-action="subtask" type="button">子任务</button><button data-action="ai" type="button">智能拆分</button>' : '<button data-action="subtask" type="button">＋ 子任务</button>'}<button class="check" data-action="toggle" type="button">${task.status === "done" ? "↺ 恢复" : "✓ 完成"}</button><button class="del" data-action="delete" type="button" title="删除这条任务（可撤销）">删除</button></div></article>`; }
 function render() {
   $("date-label").textContent = new Intl.DateTimeFormat("zh-CN", { month: "long", day: "numeric", weekday: "long" }).format(new Date());
   $("schedule").innerHTML = Object.entries(slots).map(([key, value]) => `<section class="slot"><h3>${value[0]}</h3><small>${value[1]} · ${value[2]}</small>${tasks.filter(t => t.slot === key && t.status !== "done").map(taskHTML).join("") || '<p class="side-note">留白：不额外填任务。</p>'}</section>`).join("");
@@ -76,6 +147,13 @@ function bindTaskInteractions() {
 }
 function handleAction(id, action, index) {
   const task = tasks.find(t => t.id === id); if (!task) return;
+  if (action === "delete") {
+    const title = task.title;
+    tasks = tasks.filter((item) => item.id !== id);
+    save();
+    toast("已删除「" + title + "」", true);
+    return;
+  }
   if (action === "toggle") { task.status = task.status === "done" ? "doing" : "done"; if (task.status === "done") { task.subtasks.forEach(item => item.done = true); task.completedDate = dayKey(); } else { task.completedDate = null; task.dueDate = dayKey(); } save(); return; }
   if (action === "toggle-subtask" && task.subtasks[index]) { task.subtasks[index].done = !task.subtasks[index].done; task.status = task.subtasks.length && task.subtasks.every(item => item.done) ? "done" : (task.status === "done" ? "doing" : task.status); task.completedDate = task.status === "done" ? dayKey() : null; save(); return; }
   if (action === "edit-subtask" && task.subtasks[index]) { const text = prompt("修改子任务：", task.subtasks[index].text); if (text && text.trim()) { task.subtasks[index].text = text.trim(); save(); } return; }
@@ -147,7 +225,20 @@ window.addEventListener("workbench-add-task", (event) => {
   task.estimate = mins;                        // 双保险
   tasks.push(task);
   save();
+  if (!d.silent) toast("已添加「" + task.title + "」", true);   // 9 秒内可一键撤销
 });
+
+/* Ctrl+Z / ⌘+Z 撤销（输入框内不拦截，保留原生文字撤销） */
+document.addEventListener("keydown", (event) => {
+  const meta = event.ctrlKey || event.metaKey;
+  if (!meta || event.key.toLowerCase() !== "z" || event.shiftKey) return;
+  const el = event.target;
+  const typing = el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable);
+  if (typing) return;
+  if (undo()) { event.preventDefault(); }
+});
+
+refreshUndoUI();
 window.addEventListener("workbench-set-task-place", (event) => {
   const { id, place } = event.detail || {};
   const task = tasks.find((item) => item.id === Number(id));
@@ -158,3 +249,9 @@ window.addEventListener("workbench-set-task-place", (event) => {
 render();
 window.workbenchReady = true;
 
+/* 撤销按钮（侧边栏 data-tools） */
+(function () {
+  const btn = document.getElementById("undo-btn");
+  if (btn) btn.onclick = () => undo("已撤销上一步");
+  if (btn) btn.title = "回退上一步改动（Ctrl+Z）";
+})();

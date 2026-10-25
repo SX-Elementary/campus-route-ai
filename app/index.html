@@ -28,7 +28,7 @@
         <button class="nav life-nav" data-view="board" data-flow="life">日常生活流</button>
         <button class="nav" data-view="weekly">本周复盘</button>
       </nav>
-      <div class="data-tools"><button class="tool-button" id="export-data">导出备份</button><button class="tool-button" id="import-data">导入备份</button><input id="import-file" type="file" accept="application/json" hidden /></div>
+      <div class="data-tools"><button class="tool-button" id="undo-btn" type="button" disabled title="暂无可撤销的操作">撤销</button><button class="tool-button" id="export-data">导出备份</button><button class="tool-button" id="import-data">导入备份</button><input id="import-file" type="file" accept="application/json" hidden /></div>
     </aside>
     <section class="content">
       <header><div><span class="eyebrow date-label" id="date-label"></span><span class="week-badge" id="week-badge" title="按学期起始日自动推算"></span><h1 id="view-title">今日专注</h1><p class="platform-tag">行止之间 · 工作与日常生活规划</p></div><button class="ghost" id="reset-demo">恢复示例数据</button></header>
@@ -85,6 +85,7 @@
               <button id="route-parse" class="primary small" type="button">解析</button>
             </div>
             <div id="route-parse-hint" class="route-parse-hint"></div>
+            <div id="route-parse-preview" class="route-preview" hidden></div>
             <details id="route-api-box" class="route-api">
               <summary>API 设置（可选）</summary>
               <div class="route-api-form">

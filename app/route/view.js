@@ -434,28 +434,84 @@
       Promise.resolve(LLM.parseTasks(text)).then(function (res) {
         var pp = LLM.postProcess ? LLM.postProcess(res.tasks || [], text) : { tasks: res.tasks || [], merged: [] };
         var engine = res.engine === "api" ? "模型解析" : "本地规则解析";
-        var msg = engine + "：" + pp.tasks.length + " 条" + (pp.merged.length ? "，已并入日常：" + pp.merged.join("、") : "");
-        $("route-parse-hint").textContent = msg;
-        $("route-parse-hint").className = "route-parse-hint ok";
-        (pp.tasks || []).forEach(function (t) {
+        showParsePreview(pp, engine);
+        $("route-parse").disabled = false;
+      }).catch(function (e) {
+        $("route-parse").disabled = false;
+        $("route-parse-hint").textContent = "解析失败：" + (e && e.message || e);
+        $("route-parse-hint").className = "route-parse-hint err";
+      });
+    };
+
+    /* 解析结果先预览、再确认——避免"手一抖就多出一条日程" */
+    function showParsePreview(pp, engine) {
+      var box = $("route-parse-preview");
+      var hint = $("route-parse-hint");
+      var list = pp.tasks || [];
+      var mergedNote = (pp.merged && pp.merged.length) ? "，已并入日常：" + pp.merged.join("、") : "";
+      hint.className = "route-parse-hint ok";
+
+      if (!list.length) {
+        hint.textContent = engine + "：没有识别到可添加的事项" + mergedNote;
+        box.hidden = true;
+        box.innerHTML = "";
+        return;
+      }
+      hint.textContent = engine + "：识别到 " + list.length + " 条，请确认后添加" + mergedNote;
+      box.hidden = false;
+      box.innerHTML =
+        list.map(function (t, i) {
+          var dur = Math.max(5, Math.min(180, Number(t.dur) || 30));
+          var pn = (PL && PL.cfg && t.poi) ? (poiName(t.poi) || t.poi) : (t.poi || "未指定地点");
+          return '<label class="rp-item"><input type="checkbox" checked data-i="' + i + '">' +
+                 '<span class="rp-name">' + esc(t.name) + "</span>" +
+                 '<span class="rp-meta">' + esc(pn) + " · " + dur + " 分钟</span></label>";
+        }).join("") +
+        (pp.merged && pp.merged.length ? '<div class="rp-merged">自动并入日常安排：' + esc(pp.merged.join("、")) + "（不新增任务）</div>" : "") +
+        '<div class="rp-actions"><button type="button" class="primary small" id="rp-ok"></button>' +
+        '<button type="button" class="ghost small" id="rp-cancel">取消</button></div>';
+
+      var boxes = Array.prototype.slice.call(box.querySelectorAll('input[type="checkbox"]'));
+      function syncOk() {
+        var n = boxes.filter(function (b) { return b.checked; }).length;
+        var ok = box.querySelector("#rp-ok");
+        ok.textContent = n ? "添加 " + n + " 条" : "请至少选 1 条";
+        ok.disabled = n === 0;
+      }
+      boxes.forEach(function (b) { b.onchange = syncOk; });
+      syncOk();
+
+      box.querySelector("#rp-cancel").onclick = function () {
+        box.hidden = true; box.innerHTML = "";
+        $("route-parse-hint").textContent = "已取消，输入框内容保留";
+        $("route-parse-hint").className = "route-parse-hint";
+      };
+
+      box.querySelector("#rp-ok").onclick = function () {
+        var chosen = [];
+        boxes.forEach(function (b, i) { if (b.checked) chosen.push(list[i]); });
+        chosen.forEach(function (t) {
           var dur = Math.max(5, Math.min(180, Number(t.dur) || 30));
           var slot = (t.win && t.win[0] != null)
             ? (t.win[0] < 660 ? "morning" : t.win[0] < 840 ? "noon" : t.win[0] < 1080 ? "afternoon" : "night")
             : "night";
           window.dispatchEvent(new CustomEvent("workbench-add-task", {
-            detail: { title: t.name, place: t.poi, dur: dur, estimate: dur, project: "临时事项", slot: slot }
+            detail: { title: t.name, place: t.poi, dur: dur, estimate: dur,
+                      project: "临时事项", slot: slot, silent: true }
           }));
         });
+        box.hidden = true; box.innerHTML = "";
         $("route-text").value = "";
-        setTimeout(function () {
-          RT.setTasks(plannerTasks());
-          $("route-parse").disabled = false;
-        }, 60);
-      }).catch(function (e) {
-        $("route-parse").disabled = false;
-        alert("解析失败：" + (e && e.message || e));
-      });
-    };
+        $("route-parse-hint").textContent = "已添加 " + chosen.length + " 条（可在下方时间轴撤销）";
+        $("route-parse-hint").className = "route-parse-hint ok";
+        try {
+          if (window.WorkbenchUndo) window.WorkbenchUndo.toast("已添加 " + chosen.length + " 条日程", true);
+        } catch (e) {}
+        setTimeout(function () { RT.setTasks(plannerTasks()); }, 60);
+      };
+    }
+
+    window.__showParsePreview = showParsePreview;   // 调试/自动化验证用
 
     /* API 设置 */
     var cfg = LLM.load();
