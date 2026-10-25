@@ -21,3 +21,4 @@ _*.png
 .DS_Store
 Thumbs.db
 desktop.ini
+.git-ssh-known-hosts
