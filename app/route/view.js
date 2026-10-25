@@ -121,10 +121,22 @@
       var poiName = (D.pois.filter(function (x) { return x.id === s.poi; })[0] || {}).name || "";
       return '<div class="rt-item' + (past ? " rt-past" : "") + (active ? " rt-active" : "") + '" style="border-left-color:' + c + '">' +
         '<span class="rt-time">' + hhmm(s.start) + "–" + hhmm(s.end) + "</span>" +
-        '<span class="rt-title">' + esc(s.title) + (s.place ? " <em>（" + esc(s.place) + "）</em>" : "") + "</span>" +
+        '<span class="rt-title">' +
+          (s.choreId ? '<input type="checkbox" class="rt-chore-box" data-chore="' + esc(s.choreId) + '" title="做完就勾掉" />' : "") +
+          esc(s.title) + (s.place ? " <em>（" + esc(s.place) + "）</em>" : "") + "</span>" +
         '<span class="rt-poi">' + esc(poiName) + (s.walkMin ? " · 走" + s.walkMin + " 分" : "") + "</span>" +
         (s.note ? '<span class="rt-note">' + esc(s.note) + "</span>" : "") + "</div>";
     }).join("");
+
+    /* 时间轴上的家务勾选框 */
+    $("route-timeline").querySelectorAll("input.rt-chore-box").forEach(function (box) {
+      box.onchange = function () {
+        if (!window.PlanChores) return;
+        PlanChores.toggle(box.dataset.chore);
+        renderChores();
+        pushChoresToRuntime();
+      };
+    });
 
     /* 今日任务 → 地点 */
     var tasks = loadWB().filter(function (t) { return t && t.status !== "done" && (!t.dueDate || t.dueDate <= todayKey()); });
@@ -304,6 +316,73 @@
     });
   }
 
+  function pushChoresToRuntime() {
+    var list = (window.PlanChores ? PlanChores.list() : []).filter(function (c) { return !c.done; });
+    RT.setChores(list.map(function (c) {
+      return { id: c.id, name: c.name, dur: c.dur, poi: c.poi };
+    }));
+  }
+
+  function renderChores() {
+    var host = $("route-chore-list");
+    if (!host || !window.PlanChores) return;
+    var list = PlanChores.list();
+    host.innerHTML = list.length
+      ? list.map(function (c) {
+          return '<label class="rc-item' + (c.done ? " rc-done" : "") + '">' +
+            '<input type="checkbox" data-chore="' + esc(c.id) + '"' + (c.done ? " checked" : "") + " />" +
+            '<span class="rc-name">' + esc(c.name) + "</span>" +
+            '<span class="rc-meta">' + c.dur + " 分</span>" +
+            '<button type="button" class="rc-del" data-del="' + esc(c.id) + '" title="删掉这条">×</button></label>';
+        }).join("")
+      : '<div class="rc-empty">今天还没有家务。空档会自动留出"机动"时间。</div>';
+
+    host.querySelectorAll('input[data-chore]').forEach(function (box) {
+      box.onchange = function () {
+        PlanChores.toggle(box.dataset.chore);
+        renderChores();
+        pushChoresToRuntime();
+      };
+    });
+    host.querySelectorAll("button[data-del]").forEach(function (btn) {
+      btn.onclick = function () {
+        PlanChores.remove(btn.dataset.del);
+        renderChores();
+        pushChoresToRuntime();
+      };
+    });
+  }
+
+  function bindHygiene() {
+    var s1 = $("route-hyg-shower"), s2 = $("route-hyg-washup");
+    if (!s1 || !s2 || !window.PlanChores) return;
+    var cur = PlanChores.hygiene();
+    s1.checked = cur.shower; s2.checked = cur.washup;
+    function push() {
+      var v = PlanChores.setHygiene("shower", s1.checked);
+      PlanChores.setHygiene("washup", s2.checked);
+      RT.setHygiene({ shower: !!s1.checked, washup: !!s2.checked });
+    }
+    s1.onchange = push;
+    s2.onchange = push;
+  }
+
+  function bindChorePresets() {
+    var sel = $("route-chore-preset"), btn = $("route-chore-add");
+    if (!sel || !btn) return;
+    var presets = (SCH.prefs && SCH.prefs.chorePresets) || [];
+    sel.innerHTML = presets.map(function (p, i) {
+      return '<option value="' + i + '">' + esc(p.name) + " · " + p.dur + " 分</option>";
+    }).join("");
+    btn.onclick = function () {
+      var p = presets[+sel.value || 0];
+      if (!p) return;
+      PlanChores.add(p.name, { dur: p.dur, poi: p.poi });
+      renderChores();
+      pushChoresToRuntime();
+    };
+  }
+
   function fitToPlan() {
     if (!plan || !plan.geo || !plan.geo.length) { fit(); return; }
     var minX = 1e9, minY = 1e9, maxX = -1e9, maxY = -1e9;
@@ -369,6 +448,16 @@
     try { savedDorm = localStorage.getItem("xingzhi-route-dorm"); } catch (e) {}
     dormSel.value = savedDorm || "D12";
     window.PLAN_DORM = dormSel.value;
+
+    /* 今日家务（独立轨道，不进项目看板） */
+    bindChorePresets();
+    renderChores();
+    bindHygiene();
+    (function () {
+      var h = window.PlanChores ? PlanChores.hygiene() : null;
+      if (h) RT.setHygiene(h);
+      pushChoresToRuntime();
+    })();
 
     /* 自习点：决定"带回哪儿吃"和科研段的目的地 */
     var studySel = $("route-study");

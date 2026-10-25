@@ -13,7 +13,7 @@
   var api = null;
   var timer = null, lastPlan = null, lastReplanAt = 0, lastDate = null;
   var state = {
-    day: null, week: null, dorm: "D12", now: null, atPoi: null, teamMode: "observe", studyPoi: null,
+    day: null, week: null, dorm: "D12", now: null, atPoi: null, teamMode: "observe", studyPoi: null, chores: [], hygiene: null,
     tasks: [], auto: true, lastReason: "init",
     weights: null, blocks: null
   };
@@ -83,6 +83,8 @@
       now: today ? state.now : null,
       atPoi: today ? state.atPoi : state.dorm,
       teamMode: state.teamMode,
+      chores: state.chores,
+      hygiene: state.hygiene,
       prefs: Object.assign({}, SCH.prefs, state.studyPoi ? { researchPoi: state.studyPoi } : {}),
       weights: state.weights || undefined, blocks: state.blocks || undefined
     });
@@ -175,6 +177,8 @@
     setDorm: function (d) { state.dorm = d; state.atPoi = d; return replan("dorm"); },
     setTeamMode: function (m) { state.teamMode = m || "observe"; return replan("team-mode"); },
     setStudyPoi: function (id) { state.studyPoi = id || null; return replan("study-poi"); },
+    setChores: function (list) { state.chores = Array.isArray(list) ? list : []; return replan("chores"); },
+    setHygiene: function (h) { state.hygiene = h || null; return replan("hygiene"); },
     getStudyPoi: function () { return state.studyPoi; },
     getTeamMode: function () { return state.teamMode; },
     setLocation: function (poi) { state.atPoi = poi; return replan("location"); },

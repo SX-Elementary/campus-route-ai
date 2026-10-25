@@ -135,6 +135,13 @@ window.SCHEDULE = {
     showerMin: 32,            // 30~35 分钟
     parcelMin: 8,             // 顺便取快递
     eatingMin: 25,            // 食堂吃饭耗时
+    /* 家务快速添加：只填空档，不进项目看板 */
+    chorePresets: [
+      { name: "洗衣服", dur: 25, poi: "D12" },
+      { name: "晾衣服", dur: 10, poi: "D12" },
+      { name: "整理内务", dur: 15, poi: "D12" },
+      { name: "取快递", dur: 10, poi: "U4" }
+    ],
     showerEveryDays: 1,       // 洗澡频率：1=每天，2=隔天（偶数天洗）
     washUpEveryDays: 1,       // 洗漱频率：1=每天，2=隔天
     minResearchMin: 30,       // 值得"跑一趟自习点"的最小净学习时长（低于它就不去了）

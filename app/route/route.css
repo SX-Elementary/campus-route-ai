@@ -102,3 +102,23 @@
 /* 时间轴备注行（机动建议、注意事项） */
 .rt-note{grid-column:2;color:#7c8a97;font-size:11.5px;line-height:1.4;margin-top:1px}
 .rt-item.rt-active .rt-note{color:#15803d}
+
+/* ---------- 今日家务（独立轨道） ---------- */
+.route-chores{border:1px dashed #cbd5e1;border-radius:10px;padding:8px 10px;background:#fbfdff}
+.rc-head{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:6px}
+.rc-hyg{display:flex;gap:14px;font-size:12.5px;margin-bottom:6px}
+.rc-hyg label{display:flex;align-items:center;gap:5px;cursor:pointer}
+.rc-hyg input{width:auto;margin:0}
+.rc-list{display:flex;flex-direction:column;gap:4px}
+.rc-item{display:flex;align-items:center;gap:6px;font-size:12.5px;padding:3px 4px;border-radius:6px}
+.rc-item:hover{background:#eef6ff}
+.rc-item input{width:auto;margin:0}
+.rc-name{flex:1;color:var(--ink)}
+.rc-meta{color:var(--muted);font-size:11px}
+.rc-del{border:0;background:transparent;color:#cbd5e1;font-size:14px;line-height:1;cursor:pointer;padding:0 2px}
+.rc-del:hover{color:#b91c1c}
+.rc-done .rc-name{text-decoration:line-through;color:var(--muted)}
+.rc-empty{font-size:11.5px;color:var(--muted)}
+.rc-add{display:flex;gap:6px;margin-top:6px}
+.rc-add select{flex:1;font-size:12px;padding:3px 6px}
+.rt-chore-box{width:auto;margin:0 6px 0 0;vertical-align:-1px}

@@ -171,8 +171,9 @@
       if (n <= 1) return true;
       return absDay % n === 0;
     }
-    var showerOn = onSchedule(P.showerEveryDays);
-    var washOn = onSchedule(P.washUpEveryDays);
+    var hyg = cfg.hygiene || null;
+    var showerOn = hyg ? !!hyg.shower : onSchedule(P.showerEveryDays);
+    var washOn = hyg ? !!hyg.washup : onSchedule(P.washUpEveryDays);
     if (!showerOn) warn.push({ level: "info", text: "今天是隔" + (P.showerEveryDays || 1) + "天洗的第 " + (absDay % (P.showerEveryDays || 1)) + " 天，按设置不排洗澡" });
     if (choice.shower && showerOn) {
       /* 洗澡前要先回宿舍拿洗漱用品。要点：
@@ -325,6 +326,25 @@
         /* 剩的时间不够跑一趟自习点 —— 不静默留白，而是标成"机动"并给就地建议 */
         var bPos = (nextPoi && nextPoi !== pos) ? Math.round(travel(pos, nextPoi) / 60) : 0;
         var idleRoom = limitAt - bPos - cursor;
+
+        /* 家务：只在"本来要标成机动"的空档里落，绝不挤占科研与任务 */
+        var pendingChores = (cfg.chores || []).filter(function (c) { return !c.done; });
+        var doneChoreNames = (cfg.chores || []).filter(function (c) { return c.done; }).map(function (c) { return c.name; });
+        var placedChore = false;
+        for (var ci = 0; ci < pendingChores.length; ci++) {
+          var ch = pendingChores[ci];
+          var chW = walk(ch.poi);
+          if (idleRoom >= (ch.dur || 20) + chW) {
+            put({ kind: "chore", title: ch.name, poi: ch.poi || dorm, at: cursor + chW,
+                  dur: Math.min(ch.dur || 20, 60), note: "家务/琐事（不进项目看板）", choreId: ch.id });
+            ch.done = true;
+            doneChoreNames.push(ch.name);
+            placedChore = true;
+            break;
+          }
+        }
+        if (placedChore) continue;
+
         var flexMin = P.flexMin || 15;
         if (idleRoom >= flexMin) {
           var atDorm = (pos === dorm);
@@ -345,8 +365,12 @@
           var why = room > 0
             ? "（去自习点来回 " + trip + " 分，只剩 " + room + " 分可用，低于 " + (P.minResearchMin || 30) + " 分门槛，不值得跑）"
             : "（去自习点来回 " + trip + " 分，时间不够跑一趟）";
+          var shown = hints.filter(function (h) {
+            return !doneChoreNames.some(function (d) { return h.indexOf(d) >= 0; });
+          });
+          if (!shown.length) shown = ["自由安排"];
           put({ kind: "flex", title: "机动 · 就地处理", poi: null, at: cursor, dur: idleRoom, noWalk: true,
-                note: where + "可选：" + hints.join(" / ") + why });
+                note: where + "可选：" + shown.join(" / ") + why });
           continue;
         }
         break;
@@ -483,7 +507,8 @@
                            dinnerPoi: lc.poi, dinnerName: lc.name, dinnerKind: lc.kind,
                            bfPoi: bf.id, bfName: bf.name, shower: sh, parcel: parcel, dinnerAfter: dinnerAfter };
             var localCfg = Object.assign({}, cfg, {
-              tasks: (cfg.tasks || []).map(function (t) { return Object.assign({}, t); })
+              tasks: (cfg.tasks || []).map(function (t) { return Object.assign({}, t); }),
+              chores: (cfg.chores || []).map(function (c) { return Object.assign({}, c); })
             });
             var r = buildDay(localCfg, choice);
             var placed = (localCfg.tasks || []).filter(function (t) { return t.done; }).length;

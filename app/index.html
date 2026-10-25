@@ -75,6 +75,16 @@
               <option value="B2">铸剑楼</option>
             </select></div>
             <div class="route-row"><span>周三下午</span><select id="route-team"><option value="observe">文广见习（可碎片背诵）</option><option value="run">跟队跑操</option></select></div>
+            <section class="route-chores">
+              <div class="rc-head"><span>今日家务 · 不进看板</span></div>
+              <div class="rc-hyg"><label><input type="checkbox" id="route-hyg-shower" checked /> 今天洗澡</label>
+                <label><input type="checkbox" id="route-hyg-washup" checked /> 今天洗漱</label></div>
+              <div id="route-chore-list" class="rc-list"></div>
+              <div class="rc-add">
+                <select id="route-chore-preset"></select>
+                <button type="button" class="ghost small" id="route-chore-add">添加</button>
+              </div>
+            </section>
             <div class="route-row"><button id="route-range" class="ghost small" type="button" style="flex:1">未来 7 天</button><button id="route-today" class="ghost small" type="button" style="flex:1">回到今天</button></div>
             <div id="route-stats" class="route-stats"></div>
             <div id="route-warn" class="route-warn"></div>
@@ -117,6 +127,7 @@
   <script src="route/data.js"></script>
   <script src="route/core.js"></script>
   <script src="route/schedule.js"></script>
+<script src="route/chores.js"></script>
   <script src="route/planner.js"></script>
   <script src="route/runtime.js"></script>
   <script src="route/llm.js"></script>
