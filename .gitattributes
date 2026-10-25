@@ -1,0 +1,21 @@
+﻿# 统一换行，避免 Windows/Linux 混用导致整文件 diff
+* text=auto eol=lf
+
+# Windows 脚本保持 CRLF，否则 .bat 可能双击失败
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+*.ps1  text eol=crlf
+
+# 二进制：图片、字体、压缩包
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.webp binary
+*.ico  binary
+*.zip  binary
+*.7z   binary
+*.docx binary
+
+# 生成物：diff 里不显示
+campus_graph.json diff=cpp
