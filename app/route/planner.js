@@ -164,7 +164,17 @@
       A({ kind: "meal", title: "晚饭（" + choice.dinnerName + "）", poi: choice.dinnerPoi,
           at: m(R.dinnerWindow[0]), dur: P.eatingMin, hard: "dinner" });
     }
-    if (choice.shower) {
+    /* 洗澡 / 洗漱 支持"隔 N 天一次"：按学期第几天取模，结果确定可复现 */
+    var absDay = ((cfg.week || 1) - 1) * 7 + (day - 1);
+    function onSchedule(everyDays) {
+      var n = Number(everyDays) || 1;
+      if (n <= 1) return true;
+      return absDay % n === 0;
+    }
+    var showerOn = onSchedule(P.showerEveryDays);
+    var washOn = onSchedule(P.washUpEveryDays);
+    if (!showerOn) warn.push({ level: "info", text: "今天是隔" + (P.showerEveryDays || 1) + "天洗的第 " + (absDay % (P.showerEveryDays || 1)) + " 天，按设置不排洗澡" });
+    if (choice.shower && showerOn) {
       /* 洗澡前要先回宿舍拿洗漱用品。要点：
          · 如果"拿洗漱用品"是序列里的第一件事 → 排到洗澡前
          · 如果它前面还有别的事（比如先去9号宿舍）→ 洗澡整体后移，保证顺序不乱 */
@@ -305,10 +315,38 @@
         }
         var wR = walk(rp);
         var backR = (nextPoi && nextPoi !== rp) ? Math.round(travel(rp, nextPoi) / 60) : 0;
+        var gate = P.minResearchMin || 30;
         var room = limitAt - backR - (cursor + wR);
-        if (room >= 30) {
+        if (room >= gate) {
           put({ kind: "research", title: "科研 / 计算机学习" + (rp !== P.researchPoi ? "（就近）" : ""),
                 poi: rp, at: cursor + wR, dur: Math.min(room, 180), note: "整块时间，建议断网 + 番茄钟" });
+          continue;
+        }
+        /* 剩的时间不够跑一趟自习点 —— 不静默留白，而是标成"机动"并给就地建议 */
+        var bPos = (nextPoi && nextPoi !== pos) ? Math.round(travel(pos, nextPoi) / 60) : 0;
+        var idleRoom = limitAt - bPos - cursor;
+        var flexMin = P.flexMin || 15;
+        if (idleRoom >= flexMin) {
+          var atDorm = (pos === dorm);
+          var prevKind = segs.length ? segs[segs.length - 1].kind : null;
+          var hints;
+          var where;
+          if (prevKind === "shower") {
+            hints = ["洗衣服", "晾衣服", "擦身整理"];
+            where = "刚洗完澡，";
+          } else if (atDorm) {
+            hints = (P.flexHints && P.flexHints.dorm) || [];
+            where = "在宿舍，";
+          } else {
+            hints = (P.flexHints && P.flexHints.away) || [];
+            where = "";
+          }
+          var trip = wR + backR;
+          var why = room > 0
+            ? "（去自习点来回 " + trip + " 分，只剩 " + room + " 分可用，低于 " + (P.minResearchMin || 30) + " 分门槛，不值得跑）"
+            : "（去自习点来回 " + trip + " 分，时间不够跑一趟）";
+          put({ kind: "flex", title: "机动 · 就地处理", poi: null, at: cursor, dur: idleRoom, noWalk: true,
+                note: where + "可选：" + hints.join(" / ") + why });
           continue;
         }
         break;

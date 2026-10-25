@@ -135,6 +135,15 @@ window.SCHEDULE = {
     showerMin: 32,            // 30~35 分钟
     parcelMin: 8,             // 顺便取快递
     eatingMin: 25,            // 食堂吃饭耗时
+    showerEveryDays: 1,       // 洗澡频率：1=每天，2=隔天（偶数天洗）
+    washUpEveryDays: 1,       // 洗漱频率：1=每天，2=隔天
+    minResearchMin: 30,       // 值得"跑一趟自习点"的最小净学习时长（低于它就不去了）
+    flexMin: 15,              // 空档超过这个长度就标成"机动"，并给就地建议
+    /* 就地可做的事（不需要走路，所以不受 minResearchMin 限制） */
+    flexHints: {
+      dorm: ["洗衣服", "整理内务", "背单词", "拉伸放松"],
+      away: ["背单词 / 背知识点", "复盘今天", "闭眼休息"]
+    },
     napMin: 40,
     lunchPreferPois: ["U16", "U1", "U2", "F1"],          // 一食堂/二食堂/三食堂/接待餐厅（学生荟已排除：物价高）
     avoidMealPois: ["U27"],                              // 几乎不去吃的点位：学生荟

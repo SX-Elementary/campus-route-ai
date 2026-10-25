@@ -122,7 +122,8 @@
       return '<div class="rt-item' + (past ? " rt-past" : "") + (active ? " rt-active" : "") + '" style="border-left-color:' + c + '">' +
         '<span class="rt-time">' + hhmm(s.start) + "–" + hhmm(s.end) + "</span>" +
         '<span class="rt-title">' + esc(s.title) + (s.place ? " <em>（" + esc(s.place) + "）</em>" : "") + "</span>" +
-        '<span class="rt-poi">' + esc(poiName) + (s.walkMin ? " · 走" + s.walkMin + " 分" : "") + "</span></div>";
+        '<span class="rt-poi">' + esc(poiName) + (s.walkMin ? " · 走" + s.walkMin + " 分" : "") + "</span>" +
+        (s.note ? '<span class="rt-note">' + esc(s.note) + "</span>" : "") + "</div>";
     }).join("");
 
     /* 今日任务 → 地点 */
