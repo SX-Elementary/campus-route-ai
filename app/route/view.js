@@ -41,10 +41,13 @@
       if (t.dueDate && t.dueDate > tk) return;
       var incDelayed = document.getElementById("route-include-delayed");
       if (incDelayed && !incDelayed.checked && t.dueDate && t.dueDate < tk) return;   // 不含延期任务
+      var appt = t.appointment && t.appointment.start != null ? t.appointment : null;
       out.push({
         id: t.id, name: t.title, poi: t.place || guessPoi(t),
         dur: Math.max(10, Math.min(120, t.estimate || 45)),
-        win: SLOT_WIN[t.slot] || null, soft: true, note: t.project || ""
+        win: appt ? [appt.start, appt.end != null ? appt.end : appt.start + 30] : (SLOT_WIN[t.slot] || null),
+        soft: !appt,                              // 有确切预约 → 硬窗口，不做软偏好
+        note: t.project || (appt ? "预约" : "")
       });
     });
     return out;
@@ -555,7 +558,9 @@
           var pn = (PL && PL.cfg && t.poi) ? (poiName(t.poi) || t.poi) : (t.poi || "未指定地点");
           return '<label class="rp-item"><input type="checkbox" checked data-i="' + i + '">' +
                  '<span class="rp-name">' + esc(t.name) + "</span>" +
-                 '<span class="rp-meta">' + esc(pn) + " · " + dur + " 分钟</span></label>";
+                 '<span class="rp-meta">' + esc(pn) + " · " +
+                 (t.win && t.win[0] != null ? hhmm(t.win[0]) + "–" + hhmm(t.win[0] + dur) + " · " : "") +
+                 dur + " 分钟</span></label>";
         }).join("") +
         (pp.merged && pp.merged.length ? '<div class="rp-merged">自动并入日常安排：' + esc(pp.merged.join("、")) + "（不新增任务）</div>" : "") +
         '<div class="rp-actions"><button type="button" class="primary small" id="rp-ok"></button>' +
@@ -587,7 +592,10 @@
             : "night";
           window.dispatchEvent(new CustomEvent("workbench-add-task", {
             detail: { title: t.name, place: t.poi, dur: dur, estimate: dur,
-                      project: "临时事项", slot: slot, silent: true }
+                      project: "临时事项", slot: slot, silent: true,
+                      appointment: (t.win && t.win[0] != null)
+                        ? { start: t.win[0], end: t.win[1] != null ? t.win[1] : t.win[0] + dur }
+                        : null }
           }));
         });
         box.hidden = true; box.innerHTML = "";

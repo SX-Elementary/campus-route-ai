@@ -5,8 +5,10 @@
 const fs = require("fs"), path = require("path");
 global.window = global;
 global.performance = { now: () => Date.now() };
+global.localStorage = { _d: {}, getItem(k) { return this._d[k] || null; }, setItem(k, v) { this._d[k] = v; }, removeItem(k) { delete this._d[k]; } };
+global.location = { port: "" };
 const R = path.join(__dirname, "..");
-["data.js", "core.js", "schedule.js", "planner.js", "runtime.js"].forEach(f =>
+["data.js", "core.js", "schedule.js", "planner.js", "chores.js", "llm.js", "runtime.js"].forEach(f =>
   eval(fs.readFileSync(path.join(R, f), "utf8")));
 
 const C = require(path.join(R, "core.js")), P = global.CampusPlanner, RT = global.PlanRuntime;
@@ -47,6 +49,21 @@ console.log("一周无硬冲突（集合/课程准点）");
 let danger = 0;
 for (let d = 1; d <= 7; d++) danger += plan({ weekday: d }).warnings.filter(w => w.level === "danger").length;
 ok(danger === 0, "危险提示 0 条", danger + " 条");
+
+console.log("F02 · 精确预约贯通（'今晚八点…三十分钟'）");
+const L = global.PlanLLM;
+const pp = L.postProcess(L.parseLocal("今晚八点去综训馆训练三十分钟"), "今晚八点去综训馆训练三十分钟");
+const parsed = pp.tasks[0] || {};
+ok(parsed.win && parsed.win[0] === 1200, "解析出 20:00 起点", JSON.stringify(parsed.win));
+ok(parsed.dur === 30, "解析出 30 分钟（不是默认为 60）", String(parsed.dur));
+const rAppt = plan({ weekday: 7, now: 19 * 60, atPoi: "D12",
+  tasks: [{ id: 1, name: parsed.name, poi: parsed.poi, dur: parsed.dur, win: [1200, 1230], soft: false }] });
+const segAppt = rAppt.segs.filter(s => /综训馆训练/.test(s.title))[0];
+ok(segAppt && segAppt.start === 1200 && segAppt.end === 1230, "排程落在 20:00–20:30",
+   segAppt ? P.hhmm(segAppt.start) + "–" + P.hhmm(segAppt.end) : "未排");
+const rClash = plan({ weekday: 4, now: 8 * 60, atPoi: "D12",
+  tasks: [{ id: 2, name: "预约理发", poi: "U11", dur: 30, win: [19 * 60, 19 * 60 + 30], soft: false }] });
+ok(rClash.warnings.some(w => w.level === "danger" && /预约/.test(w.text)), "预约撞课程时明确报错");
 
 console.log("F08 · 未来的周不该被当成'今天'");
 RT.init({ day: new Date().getDay() || 7, week: 7, dorm: "D12", atPoi: "D12" });

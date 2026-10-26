@@ -146,7 +146,7 @@
       return {
         name: String(t.name || "临时事项").slice(0, 40),
         poi: poi, dur: dur,
-        win: (start != null) ? [start, end != null ? end : Math.min(1439, start + dur + 30)] : null
+        win: (start != null) ? [start, end != null ? end : Math.min(1439, start + dur)] : null
       };
     }).filter(function (t) { return t.name; });
   }
@@ -206,7 +206,7 @@
   function stepName(chunk) {
     var s = chunk
       .replace(/\d{1,2}\s*[:：点]\s*\d{0,2}/g, "")
-      .replace(/[一二三四五六七八九十两]{1,3}\s*点\s*(半|[一二三四五六七八九十]{1,3}\s*分)?/g, "")
+      .replace(/[一二三四五六七八九十两]{1,3}\s*点\s*(半|[一二三四五六七八九十]{1,3}\s*分?)?/g, "")
       .replace(/\d+\s*(分钟|分|小时|钟头|个?小时)/g, "")
       .replace(/[一二三四五六七八九十两]{1,3}\s*(分钟|分|个?小时)/g, "")
       .replace(/各\s*[\d一二三四五六七八九十]{1,3}\s*(分钟|分)/g, "")
@@ -220,12 +220,32 @@
       .trim();
     return s || "临时事项";
   }
+  /* ---------- 中文数字（"八点""三十分钟""两小时"） ---------- */
+  var CN_DIGIT = { "零": 0, "〇": 0, "一": 1, "二": 2, "两": 2, "三": 3, "四": 4, "五": 5, "六": 6, "七": 7, "八": 8, "九": 9 };
+  function cn2num(str) {
+    if (str == null) return NaN;
+    var t = String(str).trim();
+    if (!t) return NaN;
+    if (/^\d+$/.test(t)) return +t;
+    if (t === "十") return 10;
+    if (t.length === 1) return CN_DIGIT[t] != null ? CN_DIGIT[t] : NaN;
+    var m = t.match(/^([一二三四五六七八九])?十([一二三四五六七八九])?$/);
+    if (m) return (m[1] ? CN_DIGIT[m[1]] : 1) * 10 + (m[2] ? CN_DIGIT[m[2]] : 0);
+    if (t.length === 2 && CN_DIGIT[t[0]] != null && CN_DIGIT[t[1]] != null) return CN_DIGIT[t[0]] * 10 + CN_DIGIT[t[1]];
+    var n = 0;
+    for (var i = 0; i < t.length; i++) {
+      if (CN_DIGIT[t[i]] == null) return NaN;
+      n = n * 10 + CN_DIGIT[t[i]];
+    }
+    return n;
+  }
+
   function parseLocal(text) {
     var s = String(text || "").trim();
     if (!s) return [];
     var win = null, m;
-    if ((m = s.match(/(\d{1,2})\s*[:：点]\s*(\d{2})?/))) {
-      var h = +m[1], mm = m[2] ? +m[2] : 0;
+    if ((m = s.match(/([一二三四五六七八九十两]{1,3}|\d{1,2})\s*[:：点]\s*([一二三四五六七八九十]{1,3}|\d{1,2}|半)?/))) {
+      var h = cn2num(m[1]), mm = m[2] ? (m[2] === "半" ? 30 : cn2num(m[2])) : 0;
       if (/晚|下午|pm/i.test(s) && h < 12) h += 12;
       win = h * 60 + mm;
     } else if (/早上|早晨/.test(s)) win = 8 * 60;
@@ -233,19 +253,19 @@
     else if (/下午/.test(s)) win = 14 * 60;
     else if (/晚上|晚/.test(s)) win = 19 * 60;
     var dur0 = null;
-    if ((m = s.match(/(\d+)\s*(分钟|分)/))) dur0 = clampDur(+m[1]);
-    else if ((m = s.match(/(\d+(?:\.\d+)?)\s*(小时|钟头)/))) dur0 = clampDur(+m[1] * 60);
+    if ((m = s.match(/([一二三四五六七八九十两]{1,3}|\d+)\s*分(?:钟)?/))) dur0 = clampDur(cn2num(m[1]));
+    else if ((m = s.match(/(\d+(?:\.\d+)?|[一二三四五六七八九十两]{1,3})\s*(?:个)?(小时|钟头)/))) dur0 = clampDur(cn2num(m[1]) * 60);
 
-    var durAll = null, mall = s.match(/各\s*(\d+)\s*(分钟|分)/);
-    if (mall) durAll = clampDur(+mall[1]);
+    var durAll = null, mall = s.match(/各\s*([一二三四五六七八九十两]{1,3}|\d+)\s*分(?:钟)?/);
+    if (mall) durAll = clampDur(cn2num(mall[1]));
     var chunks = splitChain(s);
     var out = [], cursor = win;
     chunks.forEach(function (ck) {
       if (!ck) return;
       var poi = guessPoi(ck);
       var d = null, mm2;
-      if ((mm2 = ck.match(/(\d+)\s*(分钟|分)/))) d = clampDur(+mm2[1]);
-      else if ((mm2 = ck.match(/(\d+(?:\.\d+)?)\s*(小时|钟头)/))) d = clampDur(+mm2[1] * 60);
+      if ((mm2 = ck.match(/([一二三四五六七八九十两]{1,3}|\d+)\s*分(?:钟)?/))) d = clampDur(cn2num(mm2[1]));
+      else if ((mm2 = ck.match(/(\d+(?:\.\d+)?|[一二三四五六七八九十两]{1,3})\s*(?:个)?(小时|钟头)/))) d = clampDur(cn2num(mm2[1]) * 60);
       else if (/半小时/.test(ck)) d = 30;
       else if (/拿|取|带|换/.test(ck)) d = 10;
       else if (/洗澡|澡/.test(ck)) d = 32;
@@ -255,7 +275,7 @@
       var name = stepName(ck);
       out.push({
         name: name.slice(0, 30), poi: poi, dur: d,
-        win: cursor != null ? [cursor, Math.min(1439, cursor + d + 60)] : null
+        win: cursor != null ? [cursor, Math.min(1439, cursor + d)] : null   // 精确预约：[起, 起+时长]
       });
       if (cursor != null) cursor = Math.min(1439, cursor + d);
     });

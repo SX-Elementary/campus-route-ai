@@ -91,6 +91,12 @@
         warn.push({ level: "danger",
           text: "「" + o.title + "」" + hh + " 落在宿舍门禁时段（工作日 08:00–15:30、18:20–20:30），进不了宿舍" });
       }
+      /* 预约类任务：被课程/集合挤占时明确报错，不悄悄挪走 */
+      if (o.hard === "appointment" && o.at != null && start > o.at + 1) {
+        warn.push({ level: "danger",
+          text: "预约「" + o.title + "」原定 " + hhmm(o.at) + "，实际排到 " + hhmm(start) +
+                "（被课程/集合挤占 " + Math.round(start - o.at) + " 分钟）；建议改时间或请假" });
+      }
       var lateTol = (o.kind === "meal") ? 15 : 3;      // 吃饭是时间窗，15 分钟内不算问题
       if (o.at != null && start > o.at + lateTol && !o.softAt && o.hard !== "dinner") {
         var soft = (o.kind === "assembly" || o.kind === "routine" || o.kind === "shower" || o.kind === "meal");
@@ -232,7 +238,7 @@
     (cfg.tasks || []).forEach(function (tk) {
       if (tk.done || !tk.win || tk.soft) return;
       A({ kind: "task", title: tk.name, poi: tk.poi, at: tk.win[0], dur: tk.dur,
-          note: tk.note || "", softAt: true, dl: tk.win[1] });
+          note: tk.note || "", softAt: true, dl: tk.win[1], hard: "appointment" });
       tk.done = true;
     });
     /* API 给的占用块：只放在空档里；与课程/集合冲突就直接忽略并说明（绝不悄悄挪动课程） */
