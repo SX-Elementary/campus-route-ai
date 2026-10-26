@@ -25,7 +25,17 @@
     return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2);
   }
   /* 只有"看今天"时才从当前时刻起排；看别的日子一律从 06:00 排整天 */
-  function isToday() { return state.day === todayDow(); }
+  /* 学期第几周（用于判断"选的是不是真的今天"） */
+  function semesterWeek() {
+    var start = (root.SCHEDULE && root.SCHEDULE.semesterStart) || "2026-09-07";
+    var t0 = new Date(start + "T00:00:00");
+    var now = new Date(); now.setHours(0, 0, 0, 0);
+    return Math.floor((now - t0) / 604800000) + 1;
+  }
+  /* 只有"星期几 + 周次"都对上，才算今天；否则一律按"未来/过去的某天"从头排 */
+  function isToday() {
+    return state.day === todayDow() && (Number(state.week) || 0) === semesterWeek();
+  }
   function ms() { return (root.performance && root.performance.now) ? root.performance.now() : Date.now(); }
 
   function travel(a, b) {

@@ -59,8 +59,38 @@
     function walk(poi, noWalk) { return (noWalk || !poi || poi === pos) ? 0 : Math.round(travel(pos, poi) / 60); }
     function put(o) {
       var w = o.poi ? walk(o.poi, o.noWalk) : 0;
-      var at = o.at != null ? Math.max(o.at, cursor) : cursor;
-      var start = Math.max(at, cursor + w);
+      var hardAnchor = (o.kind === "class" || o.kind === "assembly");
+      var start;
+      if (hardAnchor && o.at != null) {
+        /* 集合与课程是硬约束：按真实时刻落地，绝不因为前面塞了事而后移 */
+        start = o.at;
+        if (cursor + w > start + 1) {
+          var needLeave = start - w;
+          warn.push({ level: "danger",
+            text: "赶不上「" + o.title + "」：需 " + hhmm(needLeave) + " 出发，实际最快 " +
+                  hhmm(cursor + w) + " 才能到（差 " + Math.round(cursor + w - start) + " 分钟）" });
+          var prevPut = segs.length ? segs[segs.length - 1] : null;
+          if (prevPut && prevPut.end > start) {
+            var cutMin = prevPut.end - start;
+            prevPut.end = Math.max(prevPut.start + 1, start);
+            prevPut.note = (prevPut.note ? prevPut.note + "；" : "") + "被「" + o.title + "」截断";
+            if (prevPut.kind === "task" || prevPut.kind === "research" || prevPut.kind === "chore") {
+              warn.push({ level: "warn",
+                text: "「" + prevPut.title + "」只能做 " + (prevPut.end - prevPut.start) + " 分钟（原计划多 " +
+                      cutMin + " 分钟），因为硬性集合/课程不能推后；建议缩短或换时段" });
+            }
+          }
+        }
+      } else {
+        var at0 = o.at != null ? Math.max(o.at, cursor) : cursor;
+        start = Math.max(at0, cursor + w);
+      }
+      /* 门禁对"任何去宿舍的段"生效（不只是洗澡） */
+      if (o.poi && o.poi === dorm && o.kind !== "routine" && o.kind !== "rest" && !dormOpen(S, day, start + 1)) {
+        var hh = hhmm(start);
+        warn.push({ level: "danger",
+          text: "「" + o.title + "」" + hh + " 落在宿舍门禁时段（工作日 08:00–15:30、18:20–20:30），进不了宿舍" });
+      }
       var lateTol = (o.kind === "meal") ? 15 : 3;      // 吃饭是时间窗，15 分钟内不算问题
       if (o.at != null && start > o.at + lateTol && !o.softAt && o.hard !== "dinner") {
         var soft = (o.kind === "assembly" || o.kind === "routine" || o.kind === "shower" || o.kind === "meal");
@@ -93,7 +123,7 @@
     function A(o) { anchors.push(o); }
 
     if (day >= 1 && day <= 5) {
-      A({ kind: "routine", title: "起床 · 洗漱 · 整理内务", poi: dorm, at: m(R.wake), dur: 25 });
+      A({ kind: "routine", title: "起床 · 洗漱 · 整理内务", poi: dorm, at: m(R.wake), dur: 20 });
       var ma = R.morningAssembly[day];
       if (ma) A({ kind: "assembly", title: "早集合 · " + ma.type + "（文化广场）", poi: R.assemblyPoi,
                   at: m(ma.time), endAt: m("07:00"), dur: 30,
