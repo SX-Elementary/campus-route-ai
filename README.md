@@ -84,6 +84,15 @@ python llm_proxy.py            # 零依赖本地代理，默认 4181 端口
 - 课表、作息、个人规则来自作者本人；姓名已脱敏（`schedule.js` 中写为「本人」），专业与班级为课题说明所需；
 - 仓库**不含任何密钥**；`.gitignore` 已排除 `.secrets/` 与 `*.env`。
 
-## 七、License
+## 七、自测
+
+```powershell
+node app/route/tests/acceptance.js
+```
+
+覆盖：集合/课程不被推后、赶不上提示、宿舍门禁、晚饭窗口、一周无硬冲突、
+"未来周不等于今天"、模型建议有界（10 项断言）。
+
+## 八、License
 
 MIT

@@ -12,6 +12,31 @@
   var listeners = [];
   var api = null;
   var timer = null, lastPlan = null, lastReplanAt = 0, lastDate = null;
+
+  /* ---------- 模型建议的边界（审计 F05） ----------
+     · 只有"用户发起的变更"才去问模型；api-apply / 定时 tick 一律不问，避免回路
+     · 同一时刻只允许一个请求在飞，过期响应直接丢弃
+     · 约束没变化就不重排（幂等）
+     · 应用次数与频率都有上限 */
+  var ADVISE_REASONS = ["init", "manual", "tasks", "dorm", "week", "day", "location",
+                        "team-mode", "study-poi", "chores", "hygiene"];
+  var MAX_APPLIES = 5;             // 单次会话最多应用 5 次模型约束
+  var MIN_ADVISE_GAP = 5000;       // 两次问模型至少间隔 5 秒
+  var adviseSeq = 0, adviseInFlight = false, adviseApplies = 0, lastAdviseAt = 0, adviseCalls = 0;
+
+  function normObj(o) {
+    if (!o || typeof o !== "object") return "{}";
+    return JSON.stringify(Object.keys(o).sort().reduce(function (a, k) { a[k] = o[k]; return a; }, {}));
+  }
+  function sameConstraints(w, b) {
+    return normObj(w) === normObj(state.weights) &&
+           JSON.stringify(b || []) === JSON.stringify(state.blocks || []);
+  }
+  function canAdvise() {
+    return ADVISE_REASONS.indexOf(state.lastReason) >= 0 &&
+           !adviseInFlight &&
+           (Date.now() - lastAdviseAt) >= MIN_ADVISE_GAP;
+  }
   var state = {
     day: null, week: null, dorm: "D12", now: null, atPoi: null, teamMode: "observe", studyPoi: null, chores: [], hygiene: null,
     tasks: [], auto: true, lastReason: "init",
@@ -108,16 +133,39 @@
     p.geo = geoOf(p);
     lastPlan = p;
     emit(p);
-    if (api && typeof api.advise === "function") {
+    if (api && typeof api.advise === "function" && canAdvise()) {
+      var mySeq = ++adviseSeq;
+      adviseCalls++;
+      adviseInFlight = true;
+      lastAdviseAt = Date.now();
+      p.meta.adviceCalls = adviseCalls;
       api.advise(context()).then(function (adv) {
+        adviseInFlight = false;
+        if (mySeq !== adviseSeq) return;                 // 过期响应：丢弃，不污染新计划
         if (adv && adv.advice) { p.advice = adv.advice; p.meta.advice = true; emit(p); }
-        if (adv && (adv.weights || adv.blocks)) {
-          state.weights = adv.weights || state.weights;
-          state.blocks = adv.blocks || state.blocks;
-          var p2 = replan("api-apply");                 // 带权重/占用块重算一次
-          if (p2 && p2.meta) { p2.meta.engine = "local+api"; p2.meta.apiApplied = true; }
+        if (!adv || (!adv.weights && !adv.blocks)) return;
+        if (sameConstraints(adv.weights, adv.blocks)) {   // 幂等：没变化就什么都不做
+          p.meta.adviceNoChange = true;
+          emit(p);
+          return;
+        }
+        if (adviseApplies >= MAX_APPLIES) {
+          p.meta.adviceSkipped = "已达本次会话上限（" + MAX_APPLIES + "）";
+          emit(p);
+          return;
+        }
+        adviseApplies++;
+        state.weights = adv.weights || state.weights;
+        state.blocks = adv.blocks || state.blocks;
+        var p2 = replan("api-apply");                    // 只重算一次；api-apply 不再触发建议
+        if (p2 && p2.meta) {
+          p2.meta.engine = "local+api";
+          p2.meta.apiApplied = true;
+          p2.meta.adviceApplies = adviseApplies;
         }
       }).catch(function (e) {
+        adviseInFlight = false;
+        if (mySeq !== adviceSeq) return;
         p.meta.apiError = String(e && e.message || e).slice(0, 120);
         emit(p);
       });
@@ -187,7 +235,11 @@
     setDorm: function (d) { state.dorm = d; state.atPoi = d; return replan("dorm"); },
     setTeamMode: function (m) { state.teamMode = m || "observe"; return replan("team-mode"); },
     setStudyPoi: function (id) { state.studyPoi = id || null; return replan("study-poi"); },
-    setChores: function (list) { state.chores = Array.isArray(list) ? list : []; return replan("chores"); },
+    adviceStats: function () {
+    return { calls: adviseCalls, applies: adviseApplies, inFlight: adviseInFlight, max: MAX_APPLIES };
+  },
+  resetAdvice: function () { adviseApplies = 0; adviseCalls = 0; adviseSeq++; adviseInFlight = false; lastAdviseAt = 0; },
+  setChores: function (list) { state.chores = Array.isArray(list) ? list : []; return replan("chores"); },
     setHygiene: function (h) { state.hygiene = h || null; return replan("hygiene"); },
     getStudyPoi: function () { return state.studyPoi; },
     getTeamMode: function () { return state.teamMode; },
