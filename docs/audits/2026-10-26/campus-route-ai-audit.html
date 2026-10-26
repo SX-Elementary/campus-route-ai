@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>campus-route-ai：业务与算法审计</title>
+<style>body{margin:0;background:#f2f5f8;color:#172435;font:16px/1.85 system-ui,"Microsoft YaHei",sans-serif}main{max-width:1040px;margin:32px auto;padding:48px 56px;background:white;border-radius:14px}h1{font-size:32px;line-height:1.4}h2{font-size:23px;margin-top:42px;border-bottom:2px solid #dce6ef;padding-bottom:9px}h3{font-size:19px;margin-top:28px}p,li{max-width:94ch}a{color:#075b9b;text-decoration:none}a:hover{text-decoration:underline}.meta,.note{color:#526174;font-size:14px}.lead{font-size:20px;font-weight:650}.callout{background:#eef5fc;border-left:4px solid #2068a2;padding:16px 22px;margin:24px 0}.high{color:#a53028;font-weight:700}.medium{color:#8b5d13;font-weight:700}table{border-collapse:collapse;width:100%;font-size:14px;margin:20px 0}th,td{border:1px solid #dce3eb;padding:11px 13px;text-align:left;vertical-align:top}th{background:#edf3f8}code{background:#f0f3f6;border-radius:3px;padding:2px 5px;font-size:.9em}pre{overflow:auto;background:#f5f7fa;padding:18px;font-size:14px;line-height:1.65}small{color:#5d6b7b}nav{padding:14px 20px;background:#f6f8fa}nav a{margin-right:20px;white-space:nowrap}@media(max-width:700px){main{margin:0;padding:22px 18px;border-radius:0}h1{font-size:26px}table{display:block;overflow:auto}}@media print{body{background:white}main{margin:0;padding:0;max-width:none}nav{display:none}h2,h3{break-after:avoid}tr{break-inside:avoid}a{color:inherit}body{font-size:11pt}}</style></head>
+<body><main>
+<p class="meta">审计日期：2026-10-26（Asia/Shanghai） · 审计类型：业务能力、寻路与行程规划设计</p>
+<h1>campus-route-ai<br>方向合理，但计划可执行性尚未过关</h1>
+<p class="meta">仓库：<a href="https://github.com/SX-Elementary/campus-route-ai">SX-Elementary/campus-route-ai</a> · 默认分支 main · 固定版本 <a href="https://github.com/SX-Elementary/campus-route-ai/commit/666c2816d864fc804b70076ac5f60bd18be5efc1">666c2816d864fc804b70076ac5f60bd18be5efc1</a></p>
+<p class="lead">项目抓住了真实且有差异化的需求：在警校固定作息中，把活动选择、地点移动和时间安排联动起来。当前适合作为个人原型和比赛演示；经本次复现，尚不足以作为可直接依赖的日常行程工具。</p>
+<div class="callout"><strong>核心判断：</strong>Dijkstra 的选择合理，当前图上的最短路结果通过了交叉校验。主要短板在于硬约束没有严格执行、任务语义在模块间丢失、人物与物品状态不完整，以及缺少真实使用效果证据。优先修这些问题，再考虑更强的优化算法。</div>
+<nav><a href="#scope">范围与方法</a><a href="#business">业务适配</a><a href="#findings">具体发现</a><a href="#methods">方法对照</a><a href="#roadmap">改造顺序</a><a href="#tests">复现与验收</a></nav>
+
+<h2 id="scope">1. 审计范围与证据边界</h2>
+<p>检查 README、协作约定、设计与执行方案，读取路线模块、看板任务接入、数据导入导出、同步客户端、本地模型代理及 Python 建图脚本。针对原始 JavaScript 执行 Node 逻辑测试，并用独立 Floyd–Warshall 算法验证现有图的最短路。另对真实视图中的任务接入函数和运行时进行隔离测试。</p>
+<ul><li>当前前端数据实测为 <strong>55 个 POI、14 条道路、128 个节点、134 条边</strong>；README 的 54/127/133 已与前端实现不完全一致。</li><li>固定版本下，55 个 POI 的 1,485 个无序地点对全部可达；Dijkstra 与独立算法最大距离差约 <code>4.55×10⁻¹³ m</code>，属于浮点误差。</li><li>本次没有现场步测、没有真实定位或真实模型 API 调用、没有浏览器完整操作回归，也没有验证未提供的后端或用户实验。代码能算通不等于现实可通行。</li><li>当前仓库树未发现可执行的自动测试套件或 CI 工作流；设计文档中的历史测试描述不能替代当前版本的回归测试。</li><li>审计未修改业务代码；本目录仅提交审计文档与测试证据。本文的“已复现”“静态确认”“待现场验证”分别标明证据强度。</li></ul>
+
+<h2 id="business">2. 实际业务能力是否合理</h2>
+<table><thead><tr><th>真实需求</th><th>已有能力</th><th>审计判断</th></tr></thead><tbody>
+<tr><td>知道下一步该去哪、能否准时到达</td><td>固定课表、作息锚点、POI 步行时间、当前时间与手选位置</td><td>方向正确；固定活动仍会被顺延，当前位置可能被覆盖，核心承诺尚未成立。</td></tr>
+<tr><td>吃饭、洗澡、取物与学习串联</td><td>候选食堂、固定洗澡候选、空档填充</td><td>缺少取盆—洗澡—归还、取件站点、营业时间与排队时间等完整条件。</td></tr>
+<tr><td>一句话添加预约和连续事项</td><td>本地规则/模型解析、拆句、地点映射</td><td>精确时间、日期、前后依赖未贯通到规划器；部分日常事项被删除却显示已合并。</td></tr>
+<tr><td>临时变化后可靠重排</td><td>定时器、任务/地点变化触发重算</td><td>有重算机制，但缺少已完成、进行中、未开始、已取消的执行状态及稳定性约束。</td></tr>
+<tr><td>服务多位同学</td><td>可改宿舍、自习点、中队模式；有任务备份导入导出</td><td>课表、校规、就餐偏好仍以单人配置为中心；缺少完整的个人配置、规则来源与生效版本管理。</td></tr>
+<tr><td>跨天安排，避免遗漏截止日期</td><td>未来七天独立计算和“换一天”提示</td><td>可以用作探索性对比，不能视作七天联合计划；没有统一分配任务、保留截止日期和未来任务集合。</td></tr>
+<tr><td>证明省路、省时且不增加迟到</td><td>计划内步行和科研时长统计，已有界面截图</td><td>尚无本版本真实使用对照证据；计划值不能当作实际节省量。</td></tr>
+</tbody></table>
+<p>建议保持“小切口”：先服务一个已核实规则、已核实地点和入口的用户群，保证固定活动准时、任务不漏、路线可走。餐饮、洗澡、熄灯后学习等个人习惯应与校规分开建模，并允许用户设置优先级。当前“科研时间越多越好”的目标不能直接代表所有同学的需求。</p>
+<p class="note">已有导入导出实现位于 <a href="https://github.com/SX-Elementary/campus-route-ai/blob/666c2816d864fc804b70076ac5f60bd18be5efc1/app/data-tools.js">data-tools.js</a>；<a href="https://github.com/SX-Elementary/campus-route-ai/blob/666c2816d864fc804b70076ac5f60bd18be5efc1/app/sync.js">sync.js</a> 是可选同步客户端，本仓库提供的模型代理没有实现其完整同步后端。因此不能沿用旧文档中“没有导出”的说法，也不能据客户端存在就认定云同步已交付。</p>
+
+<h2 id="findings">3. 具体发现与优先级</h2>
+<p class="note">P1：先修复再开展依赖推荐结果的试用。P2：应在扩大用户范围、地图数据或功能范围前完成。优先级按业务后果评定，并非漏洞等级。</p>
+
+<h3><span class="high">P1 · F01</span> 固定集合、课程和门禁没有成为不可违反的约束</h3>
+<p><strong>已复现：</strong>周一第 7 周，13:00 位于文化广场，加入同地点 30 分钟任务。系统安排 13:00–13:30 做任务，把原定 13:25 的集合推迟到 13:30，仅给出 info 提示；35 分钟任务会推迟到 13:35。无额外任务的默认周二、周四方案也出现早集合晚 6 分钟。</p>
+<p><strong>已复现：</strong>周一 09:00 位于未来警务学院，加入“回宿舍拿材料”10 分钟，生成 09:16–09:26 回宿舍任务；同一配置的 <code>dormOpen</code> 明确返回 false。系统虽提示任务较内部预定晚 16 分钟，但没有拒绝违反门禁的访问。</p>
+<p><strong>原因：</strong>填空档使用 <code>limitAt - back + 10</code>，允许侵占下一活动十分钟；<code>put()</code> 把锚点延后，按有限扣分处理迟到。宿舍规则只在洗澡事后提示中使用，未约束所有宿舍访问。有限扣分不能保证强制活动不被牺牲。</p>
+<p><strong>修复：</strong>先判可行，再优化偏好。课程、集合保持真实固定时间；无法赶到时显式输出迟到/不可行及可选处置，不改写活动时间。访问地点、停留区间和出入门条件都须校验。证据：<a href="https://github.com/SX-Elementary/campus-route-ai/blob/666c2816d864fc804b70076ac5f60bd18be5efc1/app/route/planner.js#L59-L81">planner.js:59–81</a>、<a href="https://github.com/SX-Elementary/campus-route-ai/blob/666c2816d864fc804b70076ac5f60bd18be5efc1/app/route/planner.js#L263-L277">263–277</a>、<a href="https://github.com/SX-Elementary/campus-route-ai/blob/666c2816d864fc804b70076ac5f60bd18be5efc1/app/route/planner.js#L379">379</a>。</p>
+
+<h3><span class="high">P1 · F02</span> 自然语言中的精确预约时间和动作依赖在接入时丢失</h3>
+<p><strong>已复现：</strong>输入“今晚20:00去综训馆训练30分钟”。本地解析保留起始 20:00，但视图只把任务转换为 <code>slot=night</code>，写入看板时不保留原窗口；再读入规划器变成 <strong>18:30–22:30 的软偏好</strong>。即使模型理解正确，下游仍无法兑现准确预约。</p>
+<p><strong>已复现：</strong>13:00 在文化广场，依次给出“先取钥匙”40 分钟和“再用钥匙开柜”10 分钟。规划器先排 13:00–13:10 开柜，再排 15:38–16:18 取钥匙。输入顺序不等于前置依赖，拆成多个原子任务后必须保留关系。</p>
+<p><strong>修复：</strong>统一任务模型，端到端保存日期、最早开始、最晚完成、固定预约、时长、地点、优先级、前置任务与来源。遇到缺失地点或日期应显示待确认，不把猜测悄悄变成确定条件。证据：<a href="https://github.com/SX-Elementary/campus-route-ai/blob/666c2816d864fc804b70076ac5f60bd18be5efc1/app/route/view.js#L37-L48">view.js:37–48</a>、<a href="https://github.com/SX-Elementary/campus-route-ai/blob/666c2816d864fc804b70076ac5f60bd18be5efc1/app/route/view.js#L430-L447">430–447</a>、<a href="https://github.com/SX-Elementary/campus-route-ai/blob/666c2816d864fc804b70076ac5f60bd18be5efc1/app/app.js#L135-L145">app.js:135–145</a>。</p>
+
+<h3><span class="high">P1 · F03</span> 洗澡、取件和带队行进缺少完整的行动链</h3>
+<p><strong>已复现/静态确认：</strong>默认周二计划是铸剑楼 17:10 下课，步行 9 分钟到澡堂，17:19 洗澡。说明文字写“先回宿舍取洗漱用品”，但行程没有这一步。只有特定命名的用户任务触发特殊分支，而且该分支使用 <code>noWalk:true</code>，也没有可靠计入回宿舍路程。</p>
+<p><strong>已复现：</strong>“今晚20:00取快递10分钟”经后处理后任务列表为空，仅返回“已并入日常：取快递”。实际规划中的 parcel 选项只是给澡堂活动加时长，没有到快递站的访问；候选也可能选不取件。</p>
+<p><strong>静态确认：</strong>带队路线以标题文本和固定 12 分钟表示，地图仍画普通最短路，没有“必须经过指定路段”的约束。本次 U34→B2 的普通最短路恰好经过正心路、求实道，不能据此断言这条现有路线画错；问题是更换目的地或路网后没有机制保证仍符合带队规定。</p>
+<p><strong>修复：</strong>把取物、前往、服务、归还作为可验证步骤，维护所需物品和前置任务；取件必须有实际站点；带队活动使用受约束的路线及对应速度/时间模型。证据：<a href="https://github.com/SX-Elementary/campus-route-ai/blob/666c2816d864fc804b70076ac5f60bd18be5efc1/app/route/planner.js#L167-L189">planner.js:167–189</a>、<a href="https://github.com/SX-Elementary/campus-route-ai/blob/666c2816d864fc804b70076ac5f60bd18be5efc1/app/route/llm.js#L273-L292">llm.js:273–292</a>、<a href="https://github.com/SX-Elementary/campus-route-ai/blob/666c2816d864fc804b70076ac5f60bd18be5efc1/app/route/planner.js#L110-L111">planner.js:110–111</a>。</p>
+
+<h3><span class="high">P1 · F04</span> 动态重排会把“课表正在上课”误当成“用户已经到场”</h3>
+<p><strong>已复现：</strong>周二 08:20，用户位置为 D12 宿舍；系统直接生成 U8 教室的“民法学（进行中）”，步行时间 0。原因是所有时间覆盖“现在”的锚点被标记为进行中并强制 <code>noWalk=true</code>，不核对当前位置或执行反馈。</p>
+<p>运行时可手选位置，但没有自动从实际完成状态确认用户到达。<code>geoOf()</code> 又仅连接计划段的 POI，未把当前所在地加为首段起点。于是“时间正确、地点错误”的计划可能显得完整。</p>
+<p><strong>修复：</strong>区分计划时刻与执行状态；当前活动只有经用户状态/位置确认后才接续剩余时间。未知时保留不确定性，赶路仍须计入，固定课程按真实结束时刻计算可参加的剩余时间。证据：<a href="https://github.com/SX-Elementary/campus-route-ai/blob/666c2816d864fc804b70076ac5f60bd18be5efc1/app/route/planner.js#L244-L259">planner.js:244–259</a>、<a href="https://github.com/SX-Elementary/campus-route-ai/blob/666c2816d864fc804b70076ac5f60bd18be5efc1/app/route/runtime.js#L122-L134">runtime.js:122–134</a>。</p>
+
+<h3><span class="high">P1 · F05</span> 大模型建议存在无界重排回路</h3>
+<p><strong>受控模拟已复现：</strong>一次 <code>replan()</code>，让模型适配器连续三次返回相同 <code>weights</code>，共触发四次建议调用；第四次由测试主动返回 null 才停止。实际路径是重排→建议→应用权重→重排→建议，没有跳过 api-apply、没有比较内容是否变化，也没有次数上限。</p>
+<p>因此启用模型时，即使建议完全没变，也可能持续消耗调用并刷新计划。旧响应缺少计划版本匹配，亦可能覆盖较新的状态。</p>
+<p><strong>修复：</strong>一次用户事件最多一次建议应用；按输入/计划版本校验响应，取消过期请求；相同约束幂等应用。模型生成的新增“占用”应有用户输入依据或经确认，不能凭空变成硬约束。证据：<a href="https://github.com/SX-Elementary/campus-route-ai/blob/666c2816d864fc804b70076ac5f60bd18be5efc1/app/route/runtime.js#L99-L107">runtime.js:99–107</a>。</p>
+
+<h3><span class="medium">P2 · F06</span> 建图存在可复现的边界错误；物理路网语义仍不足</h3>
+<p><strong>当前数据通过：</strong>现有 14 条路均为两点直线；本次没有发现现有 POI 断连，Dijkstra 在此图上正确。</p>
+<p><strong>构造用例复现：</strong>把道路设为 L 形 <code>(0,0)→(100,0)→(100,100)</code>，两端各有 2 像素接入路程。正确总长约 187.0 米，算法返回 133.3 米，因为它沿道路首尾方向排序后直线连边，未保留折点。另把 POI 放到道路线上，接入距离为 0，代码省略接入边但保留独立 POI 节点，路线返回 null。</p>
+<p><strong>待现场验证：</strong>POI 默认按最近道路直线投影；没有入口方向、围墙/障碍、门禁通行权限、临时封路、楼层与楼梯属性。不能仅凭“图全连通”确认路能走。本审计未认定某条现有接入边实际穿墙。</p>
+<p><strong>修复：</strong>沿原折线累计里程切段，保留端点、折点、交点；零距离点合并或允许零权接入；为楼宇维护核实入口和可通行连接。证据：<a href="https://github.com/SX-Elementary/campus-route-ai/blob/666c2816d864fc804b70076ac5f60bd18be5efc1/app/route/core.js#L121-L145">core.js:121–145</a>。Python 建图脚本也有相同结构的问题。</p>
+
+<h3><span class="medium">P2 · F07</span> 无路线会被伪装成“一小时可达”</h3>
+<p><strong>已复现：</strong>向运行时查询不存在的 POI 到宿舍，返回 3600 秒。断连路段也走同一兜底。排程无法分辨“不可达”和“步行需要一小时”，仍可能塞进较长空档；地图则可能没有相应路线。</p>
+<p><strong>修复：</strong>路由返回明确状态 <code>ok / unreachable / unknown</code> 及原因；后两者不能作为有限旅行时间进入可执行计划。证据：<a href="https://github.com/SX-Elementary/campus-route-ai/blob/666c2816d864fc804b70076ac5f60bd18be5efc1/app/route/runtime.js#L31-L38">runtime.js:31–38</a>。</p>
+
+<h3><span class="medium">P2 · F08</span> 跨天能力是独立试算，日期判断还有实现错误</h3>
+<p><strong>已复现：</strong>选择第 12 周、与今天相同的星期几，运行时依旧返回 <code>today=true</code>、<code>dynamic=true</code>，从当下时间开始截断计划。<code>isToday()</code> 只比较星期几，没有比较日期/周次。</p>
+<p><strong>静态确认：</strong>看板任务按真实“今天”筛选，未来到期任务不会随所选日期进入；<code>planRange()</code> 对同一任务集合逐天独立排程；<code>bestDayForTask()</code> 只试目标任务，不保留其他已有任务，并把它强制设为 soft。因而“建议换一天”可能忽略其他工作和截止要求。</p>
+<p><strong>修复：</strong>使用绝对日期及学期日历，分离任务截止日和计划执行日；先做到每一天任务集合正确，再做跨日联合分配、每天固定活动保留、任务最多安排一次。证据：<a href="https://github.com/SX-Elementary/campus-route-ai/blob/666c2816d864fc804b70076ac5f60bd18be5efc1/app/route/runtime.js#L27-L28">runtime.js:27–28</a>、<a href="https://github.com/SX-Elementary/campus-route-ai/blob/666c2816d864fc804b70076ac5f60bd18be5efc1/app/route/planner.js#L479-L514">planner.js:479–514</a>。</p>
+
+<h3><span class="medium">P2 · F09</span> 当前规划器是有限枚举加贪心，不能宣称整体最优</h3>
+<p><strong>静态确认：</strong>只枚举几个食堂、四个洗澡时间等少量候选，再按任务数组顺序填空档；未统一优化任务顺序、时长和地点选择。午饭与晚饭被绑定为同一候选地点，<code>dinnerAfter</code> 虽被枚举但没有被使用。评分把完成任务数、最长科研时间、步行、各级警告混合加权，缺少校准和最优性差距验证。</p>
+<p>这类启发式适合作为低延迟初始方案，问题在于输出需要有可行性保证和质量基线。当前用户任务时长在视图层还被截为最多 120 分钟；不应把原本更长且不可拆分的任务静默缩短。</p>
+<p><strong>修复：</strong>保留快速算法，但加独立校验器、可选任务的明确取舍、连续可行时段候选和局部改进；用精确/约束求解器作为小规模参考答案。证据：<a href="https://github.com/SX-Elementary/campus-route-ai/blob/666c2816d864fc804b70076ac5f60bd18be5efc1/app/route/planner.js#L427-L466">planner.js:427–466</a>、<a href="https://github.com/SX-Elementary/campus-route-ai/blob/666c2816d864fc804b70076ac5f60bd18be5efc1/app/route/view.js#L44-L47">view.js:44–47</a>。</p>
+
+<h3><span class="medium">P2 · F10</span> 效果与产品化证据不足，文档需与实现重新对齐</h3>
+<p>执行方案自己列明真实灰测和对照数据尚缺。本版本未见支撑“实际省时”“降低迟到”的原始实测资料。计划里的科研时长是算法分配值，不是实际完成量；默认不吃晚饭或加入熄灯后学习也会改变可比较的任务负荷。</p>
+<p>应补充个人配置和规则来源管理、地点营业时间、排队及上楼缓冲、异常处理、可追溯计划日志。导出/导入已存在，不应重复列为“完全没有”；同步后端与真实使用证据则仍待交付或提供。</p>
+<p>附带发现：README 声称个人信息已脱敏，但 <a href="https://github.com/SX-Elementary/campus-route-ai/blob/666c2816d864fc804b70076ac5f60bd18be5efc1/app/route/schedule.js#L5-L8">schedule.js 元数据</a> 仍保留个人姓名及具体班级信息。应确认展示必要性与授权，更新脱敏说明。本文未对密钥历史和全部安全面做专项审计。</p>
+
+<h2 id="methods">4. 与成熟工业方法和相关前沿研究的对照</h2>
+<p>这个问题至少有两层：<strong>两点间怎么走</strong>属于路由；<strong>选哪些事、什么顺序、几点做、在哪做</strong>属于带时间窗、旅行时间和前置关系的活动排程。换用更复杂的最短路算法，不能修复排程语义错误。</p>
+<table><thead><tr><th>层次</th><th>本项目</th><th>建议采用的方法与取舍</th></tr></thead><tbody>
+<tr><td>静态最短路</td><td>Dijkstra + 地点对缓存</td><td>当前规模足够。队列实现实际为重复排序而非注释所称二叉堆，但当前性能不是主要瓶颈。可先保持，规模上来再用堆或 A*。</td></tr>
+<tr><td>通行与时间成本</td><td>无向距离 / 固定步速</td><td>建立入口、权限、开放时段、台阶/坡度、等待时间等语义。成熟步行引擎如 Valhalla 可作为成本模型参考，并不要求立即引入整套引擎。</td></tr>
+<tr><td>行程排程</td><td>固定锚点 + 少量候选 + 贪心填充</td><td>先硬可行性，再按优先级优化；采用 CP-SAT/约束规划或 MIP 建小规模参考模型。时间窗路由适合表达地点访问顺序，但本项目还有活动依赖、不可拆任务等排程语义。</td></tr>
+<tr><td>可选任务取舍</td><td>统一计数加分，缺少任务价值和截止控制</td><td>可参考带时间窗的 Orienteering：在时间预算内选择任务以最大化收益，并保留强制活动；不把必须参加的集合当可付费违约项。</td></tr>
+<tr><td>动态与不确定性</td><td>时间/地点触发重新计算</td><td>按实际执行状态滚动规划，冻结正在执行/已承诺步骤；考虑个体步速、排队与缓冲，减少计划频繁改动。需要出发时刻影响边成本时，再采用时间依赖路由。</td></tr>
+<tr><td>LLM 作用</td><td>任务解析 + 建议权重/占用</td><td>语言理解与确定性求解分离的方向正确。补上结构化校验、语义保真、缺信息确认、请求幂等和版本控制。</td></tr>
+</tbody></table>
+<p>方法依据：Google 的 <a href="https://developers.google.com/optimization/routing/vrptw">OR-Tools 时间窗路由</a> 明确建模时间矩阵、窗口及等待；<a href="https://developers.google.com/optimization/scheduling/job_shop">CP-SAT 排程示例</a> 展示前置关系和不重叠约束，应用到本项目时还必须显式加入活动之间的旅行时间；<a href="https://developers.google.com/optimization/routing/penalties">可选访问惩罚</a> 用于允许放弃的访问，不等于可以忽略强制集合。</p>
+<p><a href="https://valhalla.github.io/valhalla/api/route/api-reference/">Valhalla 步行成本文档</a> 区分步速、步道、台阶等成本。存在随出发时刻变化的通行时间时，可参考 <a href="https://people.csail.mit.edu/bdean/tdsp.pdf">FIFO 时间依赖最短路理论</a>；需要允许等待、校验时间依赖条件，不能只把一个静态距离缓存永远复用。</p>
+<p>相关研究已研究带时间窗、可变活动停留收益和个性化偏好的行程优化，例如 <a href="https://www.sciencedirect.com/science/article/pii/S156849462400173X">2024 年的 TOPTWVP 增量局部搜索研究</a>。其启示是把任务选择、停留时长和可行性一起建模，而非只比路线长度。研究中的效果不能直接迁移为本项目的效果承诺。</p>
+<p><strong>不建议为了“前沿”立即换 D* Lite 或强化学习。</strong><a href="https://publications.ri.cmu.edu/d-lite">D* Lite</a> 解决的是一系列相似搜索中复用历史信息的增量寻路问题。当前图很小，系统缺少实时路况和状态闭环，首先应完成语义和约束修复。是否采用这些技术应由规模、实时更新频率和实测收益决定。</p>
+
+<h2 id="roadmap">5. 建议的改造顺序</h2>
+<h3>第一步：确保推荐方案能执行</h3>
+<ol><li>新增统一任务/活动模型，保存日期、窗口、强制性、时长、地点、前置关系、执行状态。</li><li>新增独立可行性校验器：活动不重叠、真实旅行时间、固定开始/结束、地点开放、前置任务与物品状态、终点/熄灯规则。</li><li>修复 F01–F05，明确返回“可行”“条件待确认”“不可行”。保留原始强制事件；给出导致冲突的任务和约束。</li><li>统一路由状态，修复折线、零接入边；把真实入口和必须经过的路线录入数据。</li></ol>
+<h3>第二步：提高优化质量，建立可比较的参考答案</h3>
+<p>可保留现有本地算法作为快速候选生成器，先试可行空档的插入与局部交换。另做小规模 CP-SAT 参考求解，比较在相同输入、相同硬约束下的任务完成收益、步行量和运行时间，再决定是否将其用于在线服务。使用求解器也不能自动获得最优结论，应记录可行/最优/超时状态和可得的界。</p>
+<pre>对活动 i：开始 sᵢ，结束 eᵢ，时长 dᵢ，是否选择 xᵢ
+eᵢ = sᵢ + dᵢ
+强制活动：xᵢ = 1；固定预约保持原始时刻
+选中活动：满足其开始/结束窗口及地点开放条件
+若 j 紧随 i：sⱼ ≥ eᵢ + travel(i,j,出发时刻) + buffer
+若 i 是 j 的前置：选 j 必须选 i，且 i 先完成
+每项任务最多安排一次；不可达的衔接禁止选择
+
+优化顺序：可行性 → 重要/到期任务完成 → 步行与等待 → 偏好与计划稳定性</pre>
+<p class="note">以上是目标模型概要，不是可直接运行的完整求解模型。特别是旅行时间必须和活动顺序联动，不能仅加一个 NoOverlap 就认为已经解决路线排程。</p>
+<h3>第三步：建立现场数据和使用反馈</h3>
+<p>先核验常用地点入口、禁行/门禁、食堂和服务点开放时段；采集多时段路线实际耗时与排队时间。再组织小范围交叉试用，把“用户实际采取的方案”作为基线，保持必须完成的活动和服务需求相当；记录计划生成、采纳、出发、到达、完成、偏离和原因。</p>
+<p>建议保留少量、明确的业务指标：强制约束违规率、任务完成率、准时到达率、实际步行时间、路线不可通行率、重排次数/被改动事项数。科研时间作为用户自选目标，不充当通用效果证明。样本少时报告原始数据和不确定性，不把“计划节省”写成“实际节省”。</p>
+
+<h2 id="tests">6. 本次复现结果与建议验收标准</h2>
+<table><thead><tr><th>检查</th><th>本次结果</th><th>验收要求</th></tr></thead><tbody>
+<tr><td>现有图全部 POI 对</td><td>1,485 对全部可达；独立最短路比对一致</td><td>持续通过，并增加真实路线入口核验</td></tr>
+<tr><td>L 形折线</td><td>返回 133.3 m；预期约 187.0 m</td><td>沿折线走，不切角</td></tr>
+<tr><td>POI 恰落在道路上</td><td>返回 null</td><td>正确接入，允许零距离连接或共享节点</td></tr>
+<tr><td>13:25 集合前加 30 分钟任务</td><td>集合被推至 13:30</td><td>不得移动强制集合；任务延后/拒绝/用户确认拆分</td></tr>
+<tr><td>09:00 请求回宿舍取物</td><td>09:16–09:26 安排在门禁期间</td><td>明确阻止或提出规则允许的替代方案</td></tr>
+<tr><td>先取钥匙、再开柜</td><td>先开柜，后取钥匙</td><td>依赖顺序保留，前置不可行则下游也不可执行</td></tr>
+<tr><td>20:00 训练预约进入看板</td><td>退化为 18:30–22:30 软偏好</td><td>日期、硬窗口及原时长端到端保真</td></tr>
+<tr><td>20:00 取快递</td><td>任务被删除，仅显示已合并</td><td>必须保留取件需求、具体地点与时间要求</td></tr>
+<tr><td>08:20 人在宿舍，课程已开始</td><td>直接显示教室上课，步行 0</td><td>从真实位置计算赶路与迟到，不推断已到场</td></tr>
+<tr><td>模型连续返回同一权重</td><td>一次触发引出四次调用，测试主动终止</td><td>一次事件有界调用、相同输入幂等、旧响应不能覆盖新计划</td></tr>
+<tr><td>不同周、相同星期</td><td>被识别为今天</td><td>以绝对日期判定，未来计划不从当前时刻截断</td></tr>
+<tr><td>未知或不可达地点</td><td>兜底 3600 秒</td><td>返回明确失败状态，禁止伪造可执行衔接</td></tr>
+</tbody></table>
+<p>性能补充：本机 Node、缓存预热、无 UI/网络、35 次单日规划，耗时中位数约 <strong>2.84 ms</strong>、P95 约 <strong>8.42 ms</strong>。这支持“当前小图无需先做复杂寻路加速”的判断，但不是浏览器端或线上延迟承诺。</p>
+<p>建议追加多周课表、日期跨周、已结束/取消活动、关闭道路、营业时间边界、必须返回宿舍、完整取盆洗澡归还链、连续任务与超长不可拆任务等回归场景。通过标准应包括：<strong>标记为可执行的计划中，已建模的硬约束违规数为零</strong>；不可行输入必须显式说明，不允许靠改写固定事件制造“可行”。</p>
+<div class="callout"><strong>交付判断：</strong>保留现有前端、路网基础和语言解析方向；优先升级任务模型、执行状态和硬约束求解。项目的竞争力应来自“懂校内规则、给出真能执行的安排、用实测证明省时”，而不是算法名称的复杂程度。</div>
+<p class="meta">附带机器可读证据：<a href="audit-evidence.json">audit-evidence.json</a>。所有复现均针对上述固定版本；构造路网测试不代表现有校园道路已发生对应错误。</p>
+</main></body></html>
