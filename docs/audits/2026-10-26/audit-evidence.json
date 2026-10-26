@@ -1,0 +1,550 @@
+{
+  "date": "2026-10-26",
+  "timezone": "Asia/Shanghai",
+  "repository": "SX-Elementary/campus-route-ai",
+  "commit": "666c2816d864fc804b70076ac5f60bd18be5efc1",
+  "method": "Node execution of unchanged downloaded source; independent Floyd-Warshall oracle; extracted original view functions in VM; mocked LLM advice; no field survey, live LLM or browser end-to-end test",
+  "graph": {
+    "pois": 55,
+    "roads": [
+      {
+        "name": "创新道",
+        "vertices": 2
+      },
+      {
+        "name": "勤奋道",
+        "vertices": 2
+      },
+      {
+        "name": "求实道",
+        "vertices": 2
+      },
+      {
+        "name": "忠诚道",
+        "vertices": 2
+      },
+      {
+        "name": "警训路",
+        "vertices": 2
+      },
+      {
+        "name": "北区横路",
+        "vertices": 2
+      },
+      {
+        "name": "北纵路",
+        "vertices": 2
+      },
+      {
+        "name": "警知路",
+        "vertices": 2
+      },
+      {
+        "name": "警学路",
+        "vertices": 2
+      },
+      {
+        "name": "警思路",
+        "vertices": 2
+      },
+      {
+        "name": "正心路",
+        "vertices": 2
+      },
+      {
+        "name": "修身路",
+        "vertices": 2
+      },
+      {
+        "name": "黄亦路",
+        "vertices": 2
+      },
+      {
+        "name": "广平大街",
+        "vertices": 2
+      }
+    ],
+    "nodes": 128,
+    "edges": 134,
+    "isolated": [],
+    "pairs": 1485,
+    "unreachable": []
+  },
+  "dijkstra": {
+    "pairs": 1485,
+    "maxAbsoluteErrorMeters": 4.547473508864641e-13
+  },
+  "graphRegressionFixtures": {
+    "bentRoad": {
+      "road": [
+        [
+          0,
+          0
+        ],
+        [
+          100,
+          0
+        ],
+        [
+          100,
+          100
+        ]
+      ],
+      "pois": [
+        [
+          0,
+          2
+        ],
+        [
+          98,
+          100
+        ]
+      ],
+      "actual": {
+        "dist_m": 133.3,
+        "walk_s": 111,
+        "pts": [
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            100,
+            100
+          ],
+          [
+            98,
+            100
+          ]
+        ],
+        "nodes": [
+          "pA",
+          "n2",
+          "n3",
+          "pB"
+        ]
+      },
+      "expectedMeters": 186.972528
+    },
+    "exactOnRoad": {
+      "road": [
+        [
+          0,
+          0
+        ],
+        [
+          100,
+          0
+        ]
+      ],
+      "pois": [
+        [
+          10,
+          0
+        ],
+        [
+          90,
+          0
+        ]
+      ],
+      "actual": null,
+      "expectedMeters": 73.32256,
+      "access": {
+        "A": {
+          "node": "pA",
+          "roadNode": "n2",
+          "access_m": 0,
+          "road": "straight"
+        },
+        "B": {
+          "node": "pB",
+          "roadNode": "n3",
+          "access_m": 0,
+          "road": "straight"
+        }
+      }
+    }
+  },
+  "fixedAssembly": {
+    "input": {
+      "weekday": 1,
+      "week": 7,
+      "now": 780,
+      "atPoi": "U34",
+      "tasks": [
+        {
+          "name": "审计临时任务",
+          "poi": "U34",
+          "dur": 30,
+          "soft": true
+        }
+      ]
+    },
+    "result": {
+      "dur": 30,
+      "task": {
+        "kind": "task",
+        "title": "审计临时任务",
+        "poi": "U34",
+        "place": "",
+        "start": 780,
+        "end": 810,
+        "note": "",
+        "walkMin": 0,
+        "fromPoi": ""
+      },
+      "assembly": {
+        "kind": "assembly",
+        "title": "下午课前集合 · 点名报班（文化广场）",
+        "poi": "U34",
+        "place": "",
+        "start": 810,
+        "end": 815,
+        "note": "",
+        "walkMin": 0,
+        "fromPoi": ""
+      },
+      "warnings": [
+        {
+          "level": "info",
+          "text": "「下午课前集合 · 点名报班（文化广场）」比预定晚 5 分钟（步行来不及）"
+        },
+        {
+          "level": "info",
+          "text": "「带队行进（文化广场东路（正心路）→ 求实路）→ 铸剑楼」比预定晚 5 分钟（步行来不及）"
+        },
+        {
+          "level": "info",
+          "text": "「洗澡」比预定晚 20 分钟（步行来不及）"
+        }
+      ]
+    }
+  },
+  "dormClosed": {
+    "task": {
+      "kind": "task",
+      "title": "回宿舍拿材料",
+      "poi": "D12",
+      "place": "",
+      "start": 556,
+      "end": 566,
+      "note": "",
+      "walkMin": 16,
+      "fromPoi": ""
+    },
+    "openAtStart": false,
+    "warnings": [
+      {
+        "level": "danger",
+        "text": "「回宿舍拿材料」比预定晚 16 分钟（步行来不及）"
+      },
+      {
+        "level": "info",
+        "text": "「洗澡」比预定晚 20 分钟（步行来不及）"
+      }
+    ]
+  },
+  "taskPrecedence": [
+    {
+      "kind": "task",
+      "title": "再用钥匙开柜",
+      "poi": "U34",
+      "place": "",
+      "start": 780,
+      "end": 790,
+      "note": "",
+      "walkMin": 0,
+      "fromPoi": ""
+    },
+    {
+      "kind": "task",
+      "title": "先取钥匙",
+      "poi": "U34",
+      "place": "",
+      "start": 938,
+      "end": 978,
+      "note": "",
+      "walkMin": 8,
+      "fromPoi": ""
+    }
+  ],
+  "inProgress": {
+    "input": {
+      "weekday": 2,
+      "week": 7,
+      "now": 500,
+      "atPoi": "D12"
+    },
+    "firstSegments": [
+      {
+        "kind": "class",
+        "title": "民法学（进行中）",
+        "poi": "U8",
+        "place": "团育警中楼112",
+        "start": 500,
+        "end": 580,
+        "note": "",
+        "walkMin": 0,
+        "fromPoi": ""
+      },
+      {
+        "kind": "class",
+        "title": "刑事诉讼法学",
+        "poi": "U20",
+        "place": "团西院3-2",
+        "start": 600,
+        "end": 690,
+        "note": "",
+        "walkMin": 10,
+        "fromPoi": ""
+      }
+    ]
+  },
+  "nlp": {
+    "parsed": [
+      {
+        "name": "综训馆训练",
+        "poi": "U24",
+        "dur": 30,
+        "win": [
+          1200,
+          1290
+        ]
+      }
+    ],
+    "processed": {
+      "tasks": [
+        {
+          "name": "综训馆训练",
+          "poi": "U24",
+          "dur": 30,
+          "win": [
+            1200,
+            1290
+          ]
+        }
+      ],
+      "merged": []
+    },
+    "event": [
+      {
+        "type": "workbench-add-task",
+        "detail": {
+          "title": "综训馆训练",
+          "place": "U24",
+          "dur": 30,
+          "estimate": 30,
+          "project": "临时事项",
+          "slot": "night"
+        }
+      }
+    ],
+    "plannerTasks": [
+      {
+        "id": 1,
+        "name": "综训馆训练",
+        "poi": "U24",
+        "dur": 30,
+        "win": [
+          1110,
+          1350
+        ],
+        "soft": true,
+        "note": ""
+      }
+    ]
+  },
+  "parcelTaskDropped": {
+    "tasks": [],
+    "merged": [
+      "取快递"
+    ]
+  },
+  "adviceFeedbackLoop": {
+    "initialReplanCalls": 1,
+    "adviceRequests": 4,
+    "reason": "api-apply",
+    "adapter": "mock returns same weight on first 3 calls, then null to stop"
+  },
+  "dateSelection": {
+    "todayDow": 1,
+    "selectedWeek": 12,
+    "dynamic": true,
+    "today": true
+  },
+  "unreachableTravelSeconds": 3600,
+  "march": {
+    "freeShortestMinutes": 7.516666666666667,
+    "roads": [
+      "接入",
+      "正心路",
+      "正心路",
+      "求实道",
+      "求实道",
+      "求实道",
+      "求实道",
+      "求实道",
+      "求实道",
+      "接入"
+    ],
+    "scheduledMinutes": 12
+  },
+  "performance": {
+    "samples": 35,
+    "medianMs": 2.8401000000000067,
+    "p95Ms": 8.422500000000014,
+    "note": "Node, warm cache, no UI or API, not production/browser latency"
+  },
+  "defaultWeek": {
+    "week": 7,
+    "lateStudy": false,
+    "days": [
+      {
+        "day": 1,
+        "stats": {
+          "researchMin": 446,
+          "longestResearch": 180,
+          "walkMin": 93,
+          "researchBlocks": 3,
+          "lunchPlace": "一食堂",
+          "lunchTime": "11:40",
+          "showerAt": "21:00",
+          "classes": 1,
+          "dinnerPlace": "一食堂",
+          "dinnerAt": "17:30",
+          "lateStudy": "无"
+        },
+        "warnings": []
+      },
+      {
+        "day": 2,
+        "stats": {
+          "researchMin": 192,
+          "longestResearch": 98,
+          "walkMin": 116,
+          "researchBlocks": 2,
+          "lunchPlace": "三食堂",
+          "lunchTime": "11:45",
+          "showerAt": "17:19",
+          "classes": 4,
+          "dinnerPlace": "三食堂",
+          "dinnerAt": "17:52",
+          "lateStudy": "无"
+        },
+        "warnings": [
+          {
+            "level": "info",
+            "text": "「早集合 · 队列操（文化广场）」比预定晚 6 分钟（步行来不及）"
+          },
+          {
+            "level": "info",
+            "text": "「洗澡」比预定晚 9 分钟（步行来不及）"
+          }
+        ]
+      },
+      {
+        "day": 3,
+        "stats": {
+          "researchMin": 340,
+          "longestResearch": 180,
+          "walkMin": 85,
+          "researchBlocks": 3,
+          "lunchPlace": "一食堂",
+          "lunchTime": "11:45",
+          "showerAt": "17:10",
+          "classes": 1,
+          "dinnerPlace": "一食堂",
+          "dinnerAt": "17:47",
+          "lateStudy": "无"
+        },
+        "warnings": []
+      },
+      {
+        "day": 4,
+        "stats": {
+          "researchMin": 92,
+          "longestResearch": 92,
+          "walkMin": 88,
+          "researchBlocks": 1,
+          "lunchPlace": "三食堂",
+          "lunchTime": "11:40",
+          "showerAt": "17:19",
+          "classes": 5,
+          "dinnerPlace": "三食堂",
+          "dinnerAt": "17:52",
+          "lateStudy": "无"
+        },
+        "warnings": [
+          {
+            "level": "info",
+            "text": "「早集合 · 队列操（文化广场）」比预定晚 6 分钟（步行来不及）"
+          },
+          {
+            "level": "info",
+            "text": "「洗澡」比预定晚 9 分钟（步行来不及）"
+          }
+        ]
+      },
+      {
+        "day": 5,
+        "stats": {
+          "researchMin": 374,
+          "longestResearch": 180,
+          "walkMin": 105,
+          "researchBlocks": 3,
+          "lunchPlace": "一食堂",
+          "lunchTime": "11:40",
+          "showerAt": "18:00",
+          "classes": 2,
+          "dinnerPlace": "一食堂",
+          "dinnerAt": "17:30",
+          "lateStudy": "无"
+        },
+        "warnings": [
+          {
+            "level": "info",
+            "text": "「洗澡」比预定晚 20 分钟（步行来不及）"
+          }
+        ]
+      },
+      {
+        "day": 6,
+        "stats": {
+          "researchMin": 573,
+          "longestResearch": 180,
+          "walkMin": 86,
+          "researchBlocks": 4,
+          "lunchPlace": "一食堂",
+          "lunchTime": "11:40",
+          "showerAt": "21:00",
+          "classes": 0,
+          "dinnerPlace": "一食堂",
+          "dinnerAt": "17:30",
+          "lateStudy": "无"
+        },
+        "warnings": []
+      },
+      {
+        "day": 7,
+        "stats": {
+          "researchMin": 579,
+          "longestResearch": 180,
+          "walkMin": 99,
+          "researchBlocks": 5,
+          "lunchPlace": "一食堂",
+          "lunchTime": "11:40",
+          "showerAt": "08:30",
+          "classes": 0,
+          "dinnerPlace": "一食堂",
+          "dinnerAt": "17:30",
+          "lateStudy": "无"
+        },
+        "warnings": []
+      }
+    ]
+  }
+}
