@@ -75,6 +75,23 @@ ok(nowPlan.meta.today !== undefined, "有 meta.today 字段");
 ok(futurePlan.meta.today === false, "第 12 周 today=false", String(futurePlan.meta.today));
 ok(futurePlan.now === null, "第 12 周从 06:00 排（now=null）", String(futurePlan.now));
 
+console.log("F03 · 取快递不再被'并入日常'吞掉");
+const pParcel = L.postProcess(L.parseLocal("今晚八点取快递十分钟"), "今晚八点取快递十分钟");
+ok(pParcel.tasks.length === 1, "保留成 1 条任务（原实现会删除）", JSON.stringify(pParcel.tasks.map(t => t.name)));
+ok(pParcel.tasks[0] && pParcel.tasks[0].poi === "U4", "地点命中快递柜 U4", pParcel.tasks[0] && pParcel.tasks[0].poi);
+ok(pParcel.tasks[0] && pParcel.tasks[0].win && pParcel.tasks[0].win[0] === 1200, "保留 20:00 时间要求");
+const rParcel = plan({ weekday: 7, now: 19 * 60, atPoi: "D12",
+  tasks: [{ id: 9, name: "取快递", poi: "U4", dur: 10, win: [1200, 1210], soft: false }] });
+const segParcel = rParcel.segs.filter(s => /取快递/.test(s.title))[0];
+ok(segParcel && segParcel.poi === "U4" && segParcel.walkMin > 0, "排成真实一段（有步行）",
+   segParcel ? segParcel.poi + "/" + segParcel.walkMin + "分" : "未排");
+const showerParcel = rParcel.segs.filter(s => s.kind === "shower")[0];
+ok(!showerParcel || !/顺路取快递/.test(showerParcel.title), "洗澡不再重复叠加取件",
+   showerParcel ? showerParcel.title : "无洗澡");
+const pBoth = L.postProcess(L.parseLocal("洗澡顺便取快递"), "洗澡顺便取快递");
+ok(pBoth.parcelWithShower === true && pBoth.tasks.length === 0, "说'顺便'时改为并入洗澡",
+   JSON.stringify({ tasks: pBoth.tasks.length, parcel: pBoth.parcelWithShower }));
+
 console.log("F04 · '进行中'不默认到场（周二 08:20 人在宿舍，民法学在中楼）");
 const rAway = plan({ weekday: 2, now: 8 * 60 + 20, atPoi: "D12" });
 const segAway = rAway.segs.filter(s => /民法学/.test(s.title))[0];

@@ -557,6 +557,7 @@
       Promise.resolve(LLM.parseTasks(text)).then(function (res) {
         var pp = LLM.postProcess ? LLM.postProcess(res.tasks || [], text) : { tasks: res.tasks || [], merged: [] };
         var engine = res.engine === "api" ? "模型解析" : "本地规则解析";
+        if (RT.setForceParcel && !pp.parcelWithShower) RT.setForceParcel(false);
         showParsePreview(pp, engine);
         $("route-parse").disabled = false;
       }).catch(function (e) {
@@ -635,6 +636,8 @@
         try {
           if (window.WorkbenchUndo) window.WorkbenchUndo.toast("已添加 " + chosen.length + " 条日程", true);
         } catch (e) {}
+        /* "洗澡顺便取快递" → 让洗澡那一段带取件，不再单独加任务 */
+        if (pp.parcelWithShower && RT.setForceParcel) RT.setForceParcel(true);
         setTimeout(function () { RT.setTasks(plannerTasks()); }, 60);
       };
     }

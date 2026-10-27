@@ -38,7 +38,7 @@
            (Date.now() - lastAdviseAt) >= MIN_ADVISE_GAP;
   }
   var state = {
-    day: null, week: null, dorm: "D12", now: null, atPoi: null, teamMode: "observe", studyPoi: null, chores: [], hygiene: null, assumeArrived: false,
+    day: null, week: null, dorm: "D12", now: null, atPoi: null, teamMode: "observe", studyPoi: null, chores: [], hygiene: null, assumeArrived: false, forceParcel: false,
     tasks: [], auto: true, lastReason: "init",
     weights: null, blocks: null
   };
@@ -119,6 +119,7 @@
       atPoi: today ? state.atPoi : state.dorm,
       teamMode: state.teamMode,
       assumeArrived: state.assumeArrived,
+      forceParcel: state.forceParcel,
       chores: state.chores,
       hygiene: state.hygiene,
       prefs: Object.assign({}, SCH.prefs, state.studyPoi ? { researchPoi: state.studyPoi } : {}),

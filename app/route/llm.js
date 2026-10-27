@@ -286,10 +286,17 @@
   function routineOf(name) {
     if (/用品|盆|毛巾|洗漱/.test(name)) return null;      // 拿东西不是日常动作
     if (/洗澡|冲澡/.test(name)) return "洗澡";
-    if (/取快递|拿快递|取件|寄快递/.test(name)) return "取快递";
+    /* 取快递不再默认吞掉：只有明确说"顺便/顺路/一起"时才并入洗澡 */
+    if (/取快递|拿快递|取件|寄快递/.test(name)) return null;
     if (/吃饭|吃午饭|吃晚饭|吃早饭/.test(name) || /^(饭|午饭|晚饭|早饭)$/.test(name)) return "吃饭";
     return null;
   }
+  /* 用户是否明确说"洗澡顺便取快递"——只有这种情况才允许并入洗澡 */
+  function wantsParcelWithShower(text) {
+    return /(洗澡|澡).{0,12}(顺便|顺路|一起|带上).{0,12}(快递|取件)/.test(text) ||
+           /(顺便|顺路|一起|带上).{0,12}(取快递|取件)/.test(text);
+  }
+
   function postProcess(tasks, rawText) {
     var out = [], merged = [], seen = {};
     (tasks || []).forEach(function (t) {
@@ -308,7 +315,8 @@
       seen[key] = 1;
       out.push({ name: name.slice(0, 30), poi: t.poi, dur: clampDur(t.dur), win: t.win || null });
     });
-    return { tasks: out.slice(0, 6), merged: merged };
+    return { tasks: out.slice(0, 6), merged: merged,
+             parcelWithShower: wantsParcelWithShower(rawText) };
   }
 
   root.PlanLLM = {

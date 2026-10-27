@@ -554,9 +554,14 @@
 
     var W = Object.assign({ research: 1, meal: 1, walk: 1, shower: 1 }, cfg.weights || {});
     var best = null, scored = [];
+    /* 如果任务里已经有"取快递"，就不再让洗澡顺带取件（避免重复） */
+    var hasParcelTask = (cfg.tasks || []).some(function (tk) {
+      return !tk.done && /取快递|取件|拿快递/.test(tk.name || "");
+    });
     lunchCands.forEach(function (lc) {
       slots.forEach(function (sh) {
-        [false, true].forEach(function (parcel) {
+        var parcelOpts = hasParcelTask ? [false] : (cfg.forceParcel ? [true] : [false, true]);
+        parcelOpts.forEach(function (parcel) {
           [false, true].forEach(function (dinnerAfter) {
             var choice = { lunchPoi: lc.poi, lunchName: lc.name, lunchKind: lc.kind,
                            dinnerPoi: lc.poi, dinnerName: lc.name, dinnerKind: lc.kind,
