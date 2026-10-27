@@ -75,6 +75,22 @@ ok(nowPlan.meta.today !== undefined, "有 meta.today 字段");
 ok(futurePlan.meta.today === false, "第 12 周 today=false", String(futurePlan.meta.today));
 ok(futurePlan.now === null, "第 12 周从 06:00 排（now=null）", String(futurePlan.now));
 
+console.log("F04 · '进行中'不默认到场（周二 08:20 人在宿舍，民法学在中楼）");
+const rAway = plan({ weekday: 2, now: 8 * 60 + 20, atPoi: "D12" });
+const segAway = rAway.segs.filter(s => /民法学/.test(s.title))[0];
+ok(segAway && segAway.start === 8 * 60 + 30, "按赶路计算起点 08:30（不是 08:20）",
+   segAway ? P.hhmm(segAway.start) : "未排");
+ok(segAway && segAway.walkMin === 10, "记入 10 分钟步行", segAway ? String(segAway.walkMin) : "-");
+ok(rAway.warnings.some(w => /课表上在|赶/.test(w.text)), "提示位置与课表不一致");
+const rHere = plan({ weekday: 2, now: 8 * 60 + 20, atPoi: "U8" });
+const segHere = rHere.segs.filter(s => /民法学/.test(s.title))[0];
+ok(segHere && segHere.start === 8 * 60 + 20, "人已在中楼时原地接续 08:20",
+   segHere ? P.hhmm(segHere.start) : "未排");
+const rConf = plan({ weekday: 2, now: 8 * 60 + 20, atPoi: "D12", assumeArrived: true });
+const segConf = rConf.segs.filter(s => /民法学/.test(s.title))[0];
+ok(segConf && segConf.start === 8 * 60 + 20, "用户确认到场后不再加步行",
+   segConf ? P.hhmm(segConf.start) : "未排");
+
 console.log("F05 · 模型建议有界（同权重只问一次）");
 (async () => {
   let calls = 0;

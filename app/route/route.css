@@ -122,3 +122,9 @@
 .rc-add{display:flex;gap:6px;margin-top:6px}
 .rc-add select{flex:1;font-size:12px;padding:3px 6px}
 .rt-chore-box{width:auto;margin:0 6px 0 0;vertical-align:-1px}
+
+/* 到场确认条 */
+.route-arrive{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px;padding:8px 10px;
+  border-radius:10px;background:#fff7ed;border:1px solid #fdba74;font-size:12px;color:#9a3412}
+.route-arrive span{flex:1 1 100%;line-height:1.5}
+.route-arrive button{flex:1}

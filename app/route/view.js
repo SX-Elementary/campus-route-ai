@@ -73,6 +73,31 @@
       "</b>（最长 " + fmt(p.stats.longestResearch) + "）· 步行 " + p.stats.walkMin + " 分钟 · 午饭 " +
       p.stats.lunchTime + " @" + esc(p.stats.lunchPlace) + " · 洗澡 " + p.stats.showerAt;
 
+    /* 到场确认：当前这段是课/集合，但位置对不上 → 让用户一句话说清 */
+    (function () {
+      var box = $("route-arrive");
+      if (!box) return;
+      var nowm = (p.now != null) ? p.now : nowMin();
+      var segsAll = p.segs || [];
+      /* 正在进行的这段，或者 20 分钟内要开始的这段 */
+      var cur = segsAll.filter(function (s) { return s.start <= nowm && s.end > nowm; })[0] ||
+                segsAll.filter(function (s) { return s.start > nowm && s.start <= nowm + 20; })[0];
+      var need = cur && (cur.kind === "class" || cur.kind === "assembly") && p.atPoi && cur.poi && cur.poi !== p.atPoi;
+      if (!need) { box.hidden = true; box.innerHTML = ""; return; }
+      box.hidden = false;
+      var when = (cur.start <= nowm) ? "正在进行" : hhmm(cur.start) + " 开始";
+      box.innerHTML = '<span>「' + esc(cur.title.replace("（进行中）", "")) + "」" + when + "，地点 " +
+        esc(poiLabelOf(cur.poi)) + "；你现在标的还是 " + esc(poiLabelOf(p.atPoi)) + "</span>" +
+        '<button type="button" class="ghost small" id="route-arrive-yes">我已在教室</button>' +
+        '<button type="button" class="primary small" id="route-arrive-no">还在路上</button>';
+      $("route-arrive-yes").onclick = function () {
+        RT.setLocation(cur.poi);
+        RT.setAssumeArrived(true);
+        try { document.getElementById("route-loc").value = cur.poi; } catch (e) {}
+      };
+      $("route-arrive-no").onclick = function () { RT.setAssumeArrived(false); };
+    })();
+
     var delayed = (loadWB() || []).filter(function (t) {
       return t && t.status !== "done" && t.delayCount > 0 && (!t.dueDate || t.dueDate <= todayKey());
     });
@@ -386,6 +411,11 @@
     };
   }
 
+  function poiLabelOf(id) {
+    var hit = (D.pois || []).filter(function (x) { return x.id === id; })[0];
+    return hit ? hit.name : (id || "");
+  }
+
   function fitToPlan() {
     if (!plan || !plan.geo || !plan.geo.length) { fit(); return; }
     var minX = 1e9, minY = 1e9, maxX = -1e9, maxY = -1e9;
@@ -555,7 +585,7 @@
       box.innerHTML =
         list.map(function (t, i) {
           var dur = Math.max(5, Math.min(180, Number(t.dur) || 30));
-          var pn = (PL && PL.cfg && t.poi) ? (poiName(t.poi) || t.poi) : (t.poi || "未指定地点");
+          var pn = (PL && t.poi) ? (poiLabelOf(t.poi) || t.poi) : (t.poi || "未指定地点");
           return '<label class="rp-item"><input type="checkbox" checked data-i="' + i + '">' +
                  '<span class="rp-name">' + esc(t.name) + "</span>" +
                  '<span class="rp-meta">' + esc(pn) + " · " +

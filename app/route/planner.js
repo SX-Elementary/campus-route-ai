@@ -61,7 +61,7 @@
       var w = o.poi ? walk(o.poi, o.noWalk) : 0;
       var hardAnchor = (o.kind === "class" || o.kind === "assembly");
       var start;
-      if (hardAnchor && o.at != null) {
+      if (hardAnchor && o.at != null && !o.startFromNow) {
         /* 集合与课程是硬约束：按真实时刻落地，绝不因为前面塞了事而后移 */
         start = o.at;
         if (cursor + w > start + 1) {
@@ -105,6 +105,10 @@
                     text: "「" + o.title + "」比预定晚 " + (start - o.at) + " 分钟（步行来不及）" });
       }
       if (o.endAt != null) {                            // 固定结束时刻（如早操 07:00 结束）
+        if (start >= o.endAt - 1) {
+          warn.push({ level: "danger",
+            text: "「" + o.title + "」已经结束或赶不上了（" + hhmm(start) + " 才到，本应 " + hhmm(o.endAt) + " 结束）" });
+        }
         o.dur = Math.max(5, o.endAt - start);
       }
       var seg = { kind: o.kind, title: o.title, poi: o.poi, place: o.place || "",
@@ -296,8 +300,23 @@
         var at = a.at || 0, end = at + (a.dur || 0);
         if (end <= nowMin + 1) return;
         if (at < nowMin && end > nowMin) {
-          a.at = nowMin; a.dur = end - nowMin; a.noWalk = true;
-          a.title = a.title + "（进行中）"; a.inProgress = true;
+          var cur = cfg.atPoi || dorm;
+          var samePlace = !a.poi || a.poi === cur || Math.round(travel(cur, a.poi) / 60) <= 2;
+          a.at = nowMin;
+          a.dur = end - nowMin;
+          a.endAt = end;                      // 结束时刻不因为"赶路"而顺延
+          a.inProgress = true;
+          /* 只有确认你在场，才允许"零步行接续"；否则老老实实算赶路 */
+          a.noWalk = samePlace || !!cfg.assumeArrived;
+          a.startFromNow = !a.noWalk;          // 赶路：起点算"现在+步行"，不钉在原定时刻
+          if (!a.noWalk) {
+            var walkTo = Math.round(travel(cur, a.poi) / 60);
+            a.note = (a.note ? a.note + "；" : "") + "需从 " + poiLabel(cur) + " 赶 " + walkTo + " 分钟";
+            warn.push({ level: "warn",
+              text: "「" + a.title + "」课表上在 " + poiLabel(a.poi) + "，但你标的位置是 " + poiLabel(cur) +
+                    "：已按 " + walkTo + " 分钟赶路计算。若你已经在教室，点上方「我已到场」" });
+          }
+          a.title = a.title + "（进行中）";
         }
         kept.push(a);
       });
